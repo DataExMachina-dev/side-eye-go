@@ -19,7 +19,7 @@ message ProcessError {
   string error = 4;
 }
 
-// The service exposes an interface for capturing snaphots programatically.
+// The service exposes an interface for capturing snapshots programmatically.
 service ApiService {
   rpc CaptureSnapshot(CaptureSnapshotRequest) returns (CaptureSnapshotResponse);
 }
