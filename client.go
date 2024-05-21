@@ -27,7 +27,7 @@ func NewSideEyeClient(option ...SideEyeClientOption) (*SideEyeClient, error) {
 		o.apply(&opts)
 	}
 	// !!!
-	grpcClient, err := grpc.NewClient("127.0.0.1:12346")
+	grpcClient, err := grpc.Dial("127.0.0.1:12346")
 	if err != nil {
 		return nil, err
 	}
