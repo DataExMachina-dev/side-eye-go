@@ -12,7 +12,14 @@ import (
 
 type SnapshotResult struct {
 	SnapshotURL   string
-	ProcessErrors []string
+	ProcessErrors []ProcessError
+}
+
+type ProcessError struct {
+	Hostname string
+	Program  string
+	Pid      int
+	Error    string
 }
 
 type SideEyeClient struct {
@@ -79,8 +86,18 @@ func (c *SideEyeClient) CaptureSnapshot(
 	if err != nil {
 		return SnapshotResult{}, err
 	}
-	return SnapshotResult{
-		SnapshotURL:   res.SnapshotUrl,
-		ProcessErrors: res.Errors,
-	}, nil
+
+	// Convert the gRPC response into our format.
+	snapRes := SnapshotResult{
+		SnapshotURL: res.SnapshotUrl,
+	}
+	for _, pe := range res.Errors {
+		snapRes.ProcessErrors = append(snapRes.ProcessErrors, ProcessError{
+			Hostname: pe.Hostname,
+			Program:  pe.Program,
+			Pid:      int(pe.Pid),
+			Error:    pe.Error,
+		})
+	}
+	return snapRes, nil
 }

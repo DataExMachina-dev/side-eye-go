@@ -9,7 +9,14 @@ message CaptureSnapshotRequest {
 message CaptureSnapshotResponse {
   int64 snapshot_id = 1;
   string snapshot_url = 2;
-  repeated string errors = 3;
+  repeated ProcessError errors = 3;
+}
+
+message ProcessError {
+  string hostname = 1;
+  string program = 2;
+  int64 pid = 3;
+  string error = 4;
 }
 
 // The service exposes an interface for capturing snaphots programatically.
