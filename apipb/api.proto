@@ -1,0 +1,18 @@
+syntax = "proto3";
+
+package api;
+
+message CaptureSnapshotRequest {
+  string environment = 1;
+}
+
+message CaptureSnapshotResponse {
+  int64 snapshot_id = 1;
+  string snapshot_url = 2;
+  repeated string errors = 3;
+}
+
+// The service exposes an interface for capturing snaphots programatically.
+service ApiService {
+  rpc CaptureSnapshot(CaptureSnapshotRequest) returns (CaptureSnapshotResponse);
+}
