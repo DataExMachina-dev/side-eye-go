@@ -2,9 +2,14 @@ package side_eye_client_go
 
 import (
 	"context"
+	"crypto/tls"
 	"fmt"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials"
+	"google.golang.org/grpc/credentials/insecure"
 	"google.golang.org/grpc/metadata"
+	"net"
+	"net/url"
 	"os"
 
 	"github.com/DataExMachina-dev/side-eye-client-go/apipb"
@@ -29,12 +34,39 @@ type SideEyeClient struct {
 }
 
 func NewSideEyeClient(option ...SideEyeClientOption) (*SideEyeClient, error) {
+	sideEyeURL := "https://api.side-eye.io"
+	if url, ok := os.LookupEnv("SIDEEYE_URL"); ok {
+		sideEyeURL = url
+	}
+	// Turn the URL into a gRPC address.
+	parsed, err := url.Parse(sideEyeURL)
+	if err != nil {
+		return nil, err
+	}
+	var grpcAddress string
+	var dialOpts []grpc.DialOption
+	switch parsed.Scheme {
+	case "http":
+		dialOpts = append(dialOpts, grpc.WithTransportCredentials(insecure.NewCredentials()))
+		ip := net.ParseIP(parsed.Hostname())
+		if ip != nil && parsed.Port() != "" {
+			grpcAddress = net.JoinHostPort(ip.String(), parsed.Port())
+		} else if ip != nil {
+			grpcAddress = ip.String()
+		} else {
+			grpcAddress = fmt.Sprintf("dns:///%s", parsed.Host)
+		}
+	case "https":
+		dialOpts = append(dialOpts, grpc.WithTransportCredentials(credentials.NewTLS(&tls.Config{})))
+		grpcAddress = fmt.Sprintf("dns:///%s", parsed.Host)
+	default:
+	}
+
 	opts := sideEyeClientOpts{}
 	for _, o := range option {
 		o.apply(&opts)
 	}
-	// !!!
-	grpcClient, err := grpc.Dial("127.0.0.1:12346")
+	grpcClient, err := grpc.Dial(grpcAddress, dialOpts...)
 	if err != nil {
 		return nil, err
 	}
@@ -99,5 +131,6 @@ func (c *SideEyeClient) CaptureSnapshot(
 			Error:    pe.Error,
 		})
 	}
+	// !!! Handle the error when no processes were found.
 	return snapRes, nil
 }
