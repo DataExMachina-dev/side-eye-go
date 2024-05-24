@@ -3,6 +3,10 @@ syntax = "proto3";
 package api;
 
 message CaptureSnapshotRequest {
+  // environment is the name of the environment to capture a snapshot of; the
+  // snapshot will include all monitored processes reported by agents configured
+  // with this environment. If empty, it refers to agents not configured with
+  // any environment.
   string environment = 1;
 }
 
