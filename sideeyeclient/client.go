@@ -213,3 +213,14 @@ var _ error = EnvMissingError{}
 func (e EnvMissingError) Error() string {
 	return e.msg
 }
+
+// SnapshotsURL returns the URL to the Side-Eye app's snapshots page. If an
+// environment is specified the URL will point to a view filtered to that
+// environment's snapshots. If environment is empty, the URL will point to all
+// snapshots.
+func SnapshotsURL(environment string) string {
+	if environment == "" {
+		return "https://app.side-eye.io/snapshots"
+	}
+	return fmt.Sprintf("https://app.side-eye.io/snapshots?env=%s", url.QueryEscape(environment))
+}
