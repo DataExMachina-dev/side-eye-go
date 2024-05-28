@@ -1,4 +1,4 @@
-package side_eye_client_go
+package sideeyeclient
 
 import (
 	"context"
@@ -15,7 +15,7 @@ import (
 	"os"
 	"strings"
 
-	"github.com/DataExMachina-dev/side-eye-client-go/apipb"
+	"github.com/DataExMachina-dev/side-eye-go/sideeyeclient/apipb"
 )
 
 // SideEyeClient is a client for the Side-Eye service.

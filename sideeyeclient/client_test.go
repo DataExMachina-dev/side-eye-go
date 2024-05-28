@@ -1,11 +1,11 @@
-package side_eye_client_go_test
+package sideeyeclient_test
 
 import (
 	"context"
 	"flag"
 	"testing"
 
-	side_eye_client_go "github.com/DataExMachina-dev/side-eye-client-go"
+	"github.com/DataExMachina-dev/side-eye-go/sideeyeclient"
 )
 
 var environment = flag.String("env", "roachprod-andrew-test", "The environment to operate on.")
@@ -14,7 +14,7 @@ var environment = flag.String("env", "roachprod-andrew-test", "The environment t
 //
 // The SIDEEYE_TOKEN env var needs to be set.
 func TestCaptureSnapshot(t *testing.T) {
-	c, err := side_eye_client_go.NewSideEyeClient(side_eye_client_go.WithApiTokenFromEnv{})
+	c, err := sideeyeclient.NewSideEyeClient(sideeyeclient.WithApiTokenFromEnv{})
 	if err != nil {
 		t.Fatalf("failed to create client: %s", err)
 	}

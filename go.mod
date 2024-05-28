@@ -1,4 +1,4 @@
-module github.com/DataExMachina-dev/side-eye-client-go
+module github.com/DataExMachina-dev/side-eye-go
 
 go 1.22
 
