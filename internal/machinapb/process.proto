@@ -1,0 +1,88 @@
+syntax = "proto3";
+
+package process;
+
+import "google/protobuf/timestamp.proto";
+
+// A LabelRule asks the agent to apply a given label=value pair to the processes
+// that match all the predicates in a list.
+message LabelRule {
+  string label = 1;
+  string value = 2;
+  repeated Predicate predicates_conjunction = 3;
+}
+
+// Predicates are part of labeling rules.
+message Predicate {
+  string label = 1;
+  string value_regex = 2;
+}
+
+enum StandardLabels {
+  executable_path = 0;
+  // The last element of executable_path.
+  executable_name = 1;
+
+  // A filter on the command line passes if any of the individual arguments
+  // match the regex.
+  command_line = 2;
+  // A filter on the environment passes if any of the environment variable
+  // key-values match the regex.
+  environment_variables = 3;
+
+  hostname = 4;
+
+  pid = 5;
+
+  program = 6;
+
+  // environment is a label that an agent can be configured to apply to the
+  // processes it discovers.
+  environment = 7;
+}
+
+message Process {
+  // Process ID.
+  uint64 pid = 1;
+
+  // Command line arguments.
+  repeated string cmd = 2;
+
+  // Path pointed to by /proc/<pid>/exe. This is the path to the binary, which
+  // is also present as the first component of `cmd`, except exe_path has all
+  // symlinks resolved (if any).
+  string exe_path = 3;
+
+  // Environment variables.
+  repeated string env = 4;
+
+  // Time when the process was started.
+  google.protobuf.Timestamp start_time = 5;
+
+  // The binary hash of the process, if we have computed it.
+  //
+  // It will not be computed for all processes, only those that are matched to a
+  // program (see the `program` field).
+  //
+  // TODO: Define the format of the hash.
+  string binary_hash = 6;
+
+  // Unique fingerprint of the process.
+  string fingerprint = 7;
+
+  // The program that this process corresponds to, as assigned by a labeling
+  // rule. An empty value means that the process was not matched to a program.
+  string program = 8;
+
+  // The environment that (the agent corresponding to) this process is running
+  // in, as configured through an agent flag.
+  string environment = 9;
+
+  // The labels, as assigned by the labeling rules applied by the agent.
+  repeated LabelValue labels = 10;
+}
+
+message LabelValue {
+  string label = 1;
+  string value = 2;
+}

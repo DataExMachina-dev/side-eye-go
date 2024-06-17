@@ -1,0 +1,27 @@
+syntax = "proto3";
+
+package artifacts;
+
+import "chunk.proto";
+
+message GetArtifactRequest {
+  enum Kind {
+    UNKNOWN = 0;
+    BPF = 1;
+    METADATA = 2;
+    BPF_SOURCE = 3;
+    SNAPSHOT_SPEC = 5;
+    SNAPSHOT_PROGRAM = 6;
+
+    reserved 4;
+  }
+
+  // The key associated with this artifact.
+  string key = 1;
+  // The kind of artifact to retrieve.
+  Kind kind = 2;
+}
+
+service ArtifactStore {
+  rpc GetArtifact(GetArtifactRequest) returns (stream chunk.Chunk) {}
+}

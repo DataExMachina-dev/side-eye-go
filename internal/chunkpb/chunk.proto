@@ -1,0 +1,8 @@
+syntax = "proto3";
+
+package chunk;
+
+message Chunk {
+  // A chunk of the bytes.
+  bytes data = 1;
+}
