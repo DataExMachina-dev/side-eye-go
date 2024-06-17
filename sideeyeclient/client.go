@@ -4,18 +4,19 @@ import (
 	"context"
 	"crypto/tls"
 	"fmt"
+	"net"
+	"net/url"
+	"os"
+	"strings"
+
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/credentials"
 	"google.golang.org/grpc/credentials/insecure"
 	"google.golang.org/grpc/metadata"
 	"google.golang.org/grpc/status"
-	"net"
-	"net/url"
-	"os"
-	"strings"
 
-	"github.com/DataExMachina-dev/side-eye-go/sideeyeclient/apipb"
+	"github.com/DataExMachina-dev/side-eye-go/internal/apipb"
 )
 
 // SideEyeClient is a client for the Side-Eye service.
