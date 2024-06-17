@@ -1,0 +1,61 @@
+// This protobuf is used to describe the definition of a snapshot
+// program to be executed.
+
+syntax = "proto3";
+
+package snapshot_program;
+
+message RuntimeConfig {
+  uint32 g_sched_offset = 1;
+  // Offset of pc in g.gobuf from the g.
+  uint32 g_go_buf_pc_offset = 2;
+  // Offset of bp in g.gobuf from the g.
+  uint32 g_go_buf_bp_offset = 3;
+  // Offset of syscallpc in the g.
+  uint32 g_syscall_pc_offset = 4;
+  // Offset of syscallsp in the g.
+  uint32 g_syscall_sp_offset = 5;
+  // Offset of goid in the g.
+  uint32 g_goid_offset = 6;
+  // Offset of atomicstatus in the g.
+  uint32 g_atomicstatus_offset = 7;
+
+  // Offset of preemptOff in the m.
+  uint32 m_preempt_off_offset = 8;
+
+  // Address of runtime.firstmoduledata.
+  uint64 variable_runtime_dot_firstmoduledata = 9;
+  // Offset in runtime.moduledata of the types field.
+  uint32 moduledata_types_offset = 10;
+  // Offset in runtime.moduledata of the etypes field.
+  uint32 moduledata_etypes_offset = 11;
+
+  uint64 dereference_start_pc = 12;
+  uint64 dereference_end_pc = 13;
+}
+
+message PcClassifier {
+  repeated uint64 target_pc = 1;
+  repeated uint32 prog_pc = 2;
+}
+
+message TypeInfo {
+  uint32 enqueue_pc = 1;
+  uint32 byte_len = 2;
+}
+
+message SnapshotProgram {
+  RuntimeConfig runtime_config = 1;
+  PcClassifier pc_classifier = 2;
+  map<uint64, uint32> go_runtime_type_to_type_id = 3;
+  map<uint32, TypeInfo> type_info = 4;
+  bytes prog = 5;
+}
+
+message SnapshotRequest { SnapshotProgram program = 1; }
+
+message SnapshotResponse { bytes output = 1; }
+
+service SnapshotProgramService {
+  rpc Snapshot(SnapshotRequest) returns (SnapshotResponse);
+}

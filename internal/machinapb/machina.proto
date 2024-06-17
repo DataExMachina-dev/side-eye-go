@@ -1,0 +1,116 @@
+syntax = "proto3";
+
+package machina;
+
+import "process.proto";
+import "chunk.proto";
+import "google/protobuf/timestamp.proto";
+
+message WatchProcessesRequest {
+  reserved 1;
+  // Predicates which are used to filter the processes. The resulting set will
+  // be the disjunction of the predicates (OR).
+  repeated process.LabelRule label_rules = 2;
+}
+
+message Update {
+  // The process which was updated.
+  repeated process.Process added = 1;
+  repeated string removed = 2;
+}
+
+message GetExecutableRequest {
+  // The path to the executable.
+  string hash = 1;
+}
+
+// The SnapshotRequest drives the snapshot process.
+message SnapshotRequest {
+  // Setup is the first message from the client in the Snapshot protocol.
+  message Setup {
+    // The key associated with the artifacts needed for this snapshot.
+    string key = 1;
+
+    // The fingerprint of the process to snapshot.
+    string process_fingerprint = 2;
+  }
+
+  // Snapshot is the second message from the client in the Snapshot protocol.
+  // It trggers the snapshot process.
+  message Snapshot {}
+
+  oneof request {
+    Setup setup = 1;
+    Snapshot snapshot = 2;
+  }
+}
+
+message SnapshotResponse {
+  bytes data = 1;
+
+  // The timestamp of the snapshot. This is a best-effort timestamp that
+  // should closely match the time at which the snapshot was taken.
+  google.protobuf.Timestamp timestamp = 2;
+
+  // The duration of the pause for the snapshot as observed by the agent.
+  uint64 pause_duration_ns = 3;
+}
+
+message MachinaInfoRequest {}
+
+message MachinaInfoResponse {
+  // A unique identifier for this machina.
+  string fingerprint = 1;
+
+  // The hostname of the machina.
+  string hostname = 3;
+
+  // The version of the machina.
+  string version = 4;
+
+  // The token of the tenant to which this machina belongs.
+  //
+  // TODO: Define any structure for this token. For now it's opaque and will
+  // correspond to the token used to scope requests to a tenant.
+  string tenant_token = 5;
+
+  // The environment flag passed to the machina.
+  string environment = 6;
+
+  // The IP addresses of the machina.
+  repeated string ip_addresses = 7;
+}
+
+service Machina {
+  // WatchProcesses returns a stream of processes which match the given
+  // predicates.
+  rpc WatchProcesses(WatchProcessesRequest) returns (stream Update) {}
+
+  // GetExecutable returns a stream of chunks which make up the executable.
+  rpc GetExecutable(GetExecutableRequest) returns (stream chunk.Chunk) {}
+
+  // Snapshot sets up and performs a snapshot of the given process.
+  // The protocol is designed to allow for many snapshots to be taken close in
+  // time across many processes and machinas. In order to make this possible,
+  // the protocol has two phases of execution: Setup and Snapshot.
+  //
+  // Setup: The client sends a Setup message to the server. The server does not
+  // respond with headers until it has finished setting up the snapshot. Any
+  // additional messages sent by the client at this point may result in an error
+  // until the headers have been received by the client. At this point, the
+  // server may download the needed snapshot artifacts if it does not already
+  // have them using the key in the setup request.
+  //
+  // Snapshot: Once the headers have been received by the client, the client may
+  // send a Snapshot message to the server. The server will respond with a
+  // stream that has a single SnapshotResponse message.
+  //
+  // The protocol may be extended in the future to allow for multiple snapshots.
+  rpc Snapshot(stream SnapshotRequest) returns (stream SnapshotResponse) {}
+
+  // GetMetadata returns metadata about the machina.
+  //
+  // The response is streaming so that ex can detect disconnections from
+  // the machina.
+  rpc MachinaInfo(MachinaInfoRequest) returns (stream MachinaInfoResponse) {}
+}
