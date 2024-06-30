@@ -19,6 +19,8 @@ message RuntimeConfig {
   uint32 g_goid_offset = 6;
   // Offset of atomicstatus in the g.
   uint32 g_atomicstatus_offset = 7;
+  // Offset of stacktopsp in the g.
+  uint32 g_stktopsp_offset = 16;
 
   // Offset of preemptOff in the m.
   uint32 m_preempt_off_offset = 8;
@@ -29,9 +31,14 @@ message RuntimeConfig {
   uint32 moduledata_types_offset = 10;
   // Offset in runtime.moduledata of the etypes field.
   uint32 moduledata_etypes_offset = 11;
+  // Offset in runtime.moduledata of the text field.
+  uint32 moduledata_text_offset = 14;
 
   uint64 dereference_start_pc = 12;
   uint64 dereference_end_pc = 13;
+
+  // The vma of the text section as used as the base.
+  uint64 text_default_start = 15;
 }
 
 message PcClassifier {

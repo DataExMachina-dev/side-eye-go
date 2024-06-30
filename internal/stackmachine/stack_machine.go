@@ -16,7 +16,7 @@ type StackMachine[
 
 	// Pointer to the end of the outBuf
 	offset  uint32
-	fp      uintptr
+	cfa     uintptr
 	decoder OpDecoder
 
 	q Q
@@ -55,7 +55,7 @@ type GoRuntimeTypeResolver interface {
 }
 
 type TypeIDResolver interface {
-	ResolveTypeAddressToTypeId(addr uint64) uint32
+	ResolveGoRuntimeTypeToTypeId(addr uint64) uint32
 }
 
 func New[Q Queue, B OutBuf, G GoRuntimeTypeResolver, T TypeIDResolver](
@@ -79,12 +79,12 @@ func New[Q Queue, B OutBuf, G GoRuntimeTypeResolver, T TypeIDResolver](
 
 func (s *StackMachine[Q, B, G, T]) Run(
 	pc uint32,
-	fp uintptr,
+	cfa uintptr,
 	depth uint32,
 	offset uint32,
 ) bool {
 	s.decoder.pc = pc
-	s.fp = fp
+	s.cfa = cfa
 	s.offset = offset
 
 	for i := 0; i < 100000; i++ {
@@ -122,7 +122,7 @@ func (s *StackMachine[Q, B, G, T]) Run(
 			}
 			goRuntimeType := s.g.ResolveTypeAddressToGoRuntimeTypeId(uint64(e._type))
 			*(*uint64)(ptr) = goRuntimeType
-			typeId := s.t.ResolveTypeAddressToTypeId(goRuntimeType)
+			typeId := s.t.ResolveGoRuntimeTypeToTypeId(goRuntimeType)
 			if typeId == 0 {
 				continue
 			}
@@ -146,7 +146,7 @@ func (s *StackMachine[Q, B, G, T]) Run(
 			}
 			goRuntimeType := s.g.ResolveTypeAddressToGoRuntimeTypeId(uint64(e.itab))
 			*(*uint64)(ptr) = goRuntimeType
-			typeId := s.t.ResolveTypeAddressToTypeId(goRuntimeType)
+			typeId := s.t.ResolveGoRuntimeTypeToTypeId(goRuntimeType)
 			if typeId == 0 {
 				continue
 			}
@@ -258,8 +258,7 @@ func (s *StackMachine[Q, B, G, T]) Run(
 
 		case OpCodeDereferenceCFAOffset:
 			dereferenceCFAOffset := s.decoder.DecodeDereferenceCFAOffset()
-			srcAddr := uintptr(s.fp) +
-				16 + // translation from frame base to CFA
+			srcAddr := uintptr(s.cfa) +
 				uintptr(dereferenceCFAOffset.Offset) +
 				uintptr(dereferenceCFAOffset.PointerBias)
 			s.b.Dereference(s.offset, srcAddr, dereferenceCFAOffset.ByteLen)

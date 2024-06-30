@@ -6,6 +6,7 @@ import (
 	"sync"
 	"unsafe"
 
+	"github.com/DataExMachina-dev/side-eye-go/internal/moduledata"
 	"github.com/DataExMachina-dev/side-eye-go/internal/snapshotpb"
 )
 
@@ -30,6 +31,9 @@ func StopTheWorld(config *snapshotpb.RuntimeConfig, f func()) {
 	//
 	// We'd want to take care to ensure that no defer underneath that function
 	// needs to run.
+	firstmoduledata := moduledata.GetFirstmoduledata()
+	textStart := *(*uintptr)(unsafe.Pointer(uintptr(firstmoduledata) + uintptr(config.ModuledataTextOffset)))
+	base := textStart - uintptr(config.TextDefaultStart)
 
 	runtime.LockOSThread()
 	defer runtime.UnlockOSThread()
@@ -37,8 +41,8 @@ func StopTheWorld(config *snapshotpb.RuntimeConfig, f func()) {
 	state.mu.Lock()
 	defer state.mu.Unlock()
 
-	state.dereferenceStart = uintptr(config.DereferenceStartPc)
-	state.dereferenceEnd = uintptr(config.DereferenceEndPc)
+	state.dereferenceStart = uintptr(config.DereferenceStartPc) + base
+	state.dereferenceEnd = uintptr(config.DereferenceEndPc) + base
 
 	setHandler()
 	defer resetHandler()
@@ -54,14 +58,10 @@ var state = signalState{}
 type signalState struct {
 	mu                               sync.Mutex
 	dereferenceStart, dereferenceEnd uintptr
-	prevAction                       sigactiont
+	prevAction                       sigaction
 	snapshotTid                      uint32
+	base                             uint64
 }
-
-// Used in assembly.
-//
-// These are the flags to set on out sigactiont struct in setHandler.
-const saFlags = _SA_ONSTACK | _SA_SIGINFO | _SA_NODEFER | _SA_RESTORER
 
 // Set the signal handler to one that can gracefully recover from a segfault
 // in the Dereference function. Save the old signal handler to restore later.

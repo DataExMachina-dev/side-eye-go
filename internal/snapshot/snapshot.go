@@ -11,6 +11,7 @@ import (
 	"github.com/DataExMachina-dev/side-eye-go/internal/allgs"
 	"github.com/DataExMachina-dev/side-eye-go/internal/framing"
 	"github.com/DataExMachina-dev/side-eye-go/internal/machinapb"
+	"github.com/DataExMachina-dev/side-eye-go/internal/moduledata"
 	"github.com/DataExMachina-dev/side-eye-go/internal/snapshotpb"
 	"github.com/DataExMachina-dev/side-eye-go/internal/stackmachine"
 	"github.com/DataExMachina-dev/side-eye-go/internal/stoptheworld"
@@ -22,9 +23,9 @@ type moduledataTypeRange struct {
 }
 
 type moduledataConfig struct {
-	runtimeDotFirstmoduledataAddr uintptr
-	typesOffset                   uintptr
-	etypesOffset                  uintptr
+	runtimeDotFirstmoduledata unsafe.Pointer
+	typesOffset               uintptr
+	etypesOffset              uintptr
 }
 
 type goRuntimeTypeResolver struct {
@@ -33,12 +34,12 @@ type goRuntimeTypeResolver struct {
 	// TODO: Handle more than one moduledata. Go dynamically loaded libraries seem pretty rare.
 }
 
-func makeGoRuntimeTypeResolver(p *snapshotpb.RuntimeConfig) goRuntimeTypeResolver {
+func makeGoRuntimeTypeResolver(p *snapshotpb.RuntimeConfig, firstModuledata unsafe.Pointer) goRuntimeTypeResolver {
 	return goRuntimeTypeResolver{
 		cfg: moduledataConfig{
-			runtimeDotFirstmoduledataAddr: uintptr(p.VariableRuntimeDotFirstmoduledata),
-			typesOffset:                   uintptr(p.ModuledataTypesOffset),
-			etypesOffset:                  uintptr(p.ModuledataEtypesOffset),
+			runtimeDotFirstmoduledata: firstModuledata,
+			typesOffset:               uintptr(p.ModuledataTypesOffset),
+			etypesOffset:              uintptr(p.ModuledataEtypesOffset),
 		},
 	}
 }
@@ -47,8 +48,8 @@ func (m *goRuntimeTypeResolver) maybeResolveFirstmoduledataRange() {
 	if m.cachedFirstmoduledataRange.start != 0 {
 		return
 	}
-	var v unsafe.Pointer
-	moduledataPtr := unsafe.Pointer(uintptr(v) + m.cfg.runtimeDotFirstmoduledataAddr)
+
+	moduledataPtr := moduledata.GetFirstmoduledata()
 	types := *(*uint64)(unsafe.Pointer(uintptr(moduledataPtr) + m.cfg.typesOffset))
 	etypes := *(*uint64)(unsafe.Pointer(uintptr(moduledataPtr) + m.cfg.etypesOffset))
 	m.cachedFirstmoduledataRange = moduledataTypeRange{start: types, end: etypes}
@@ -97,8 +98,11 @@ func newSnapshotter(p *snapshotpb.SnapshotProgram) *snapshotter {
 	b.stacks = make(map[uint64][]frameOfInterest, 512 /* arbitrary */)
 	b.out = makeOutBuf(1 << 20)
 	b.queue = makeQueue()
-	b.unwinder = newUnwinder()
-	b.goRuntimeTypeResolver = makeGoRuntimeTypeResolver(p.RuntimeConfig)
+	firstmoduledata := moduledata.GetFirstmoduledata()
+	textStart := *(*uintptr)(unsafe.Pointer(uintptr(firstmoduledata) + uintptr(p.RuntimeConfig.ModuledataTextOffset)))
+	base := textStart - uintptr(p.RuntimeConfig.TextDefaultStart)
+	b.unwinder = newUnwinder(base)
+	b.goRuntimeTypeResolver = makeGoRuntimeTypeResolver(p.RuntimeConfig, firstmoduledata)
 	b.typeIdResolver = typeIdResolver{types: p.GoRuntimeTypeToTypeId}
 	b.sm = stackmachine.New(p.Prog, &b.queue, &b.out, &b.goRuntimeTypeResolver, &b.typeIdResolver)
 	return &b
@@ -144,7 +148,7 @@ func (s *snapshotter) snapshotGoroutine(snapshotHeader *framing.SnapshotHeader, 
 	// should use syscallpc and the syscall frame, but in go versions before
 	// 1.23, the syscall base pointer is not recorded. Some degree of unwinding
 	// is needed.
-	pcs, fps := s.unwinder.walkStack(g.PC(), g.BP())
+	pcs, fps := s.unwinder.walkStack(g.PC(), g.BP(), g.Stktopsp())
 	stackHash := murmur2(pcs, 0)
 	goroutineHeader, ok := s.out.writeGoroutineHeader()
 	if !ok {
@@ -229,7 +233,7 @@ type typeIdResolver struct {
 	types map[uint64]uint32
 }
 
-func (r *typeIdResolver) ResolveTypeAddressToTypeId(addr uint64) uint32 {
+func (r *typeIdResolver) ResolveGoRuntimeTypeToTypeId(addr uint64) uint32 {
 	return r.types[addr]
 }
 
