@@ -22,6 +22,7 @@ import (
 	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
+// Server implements the machinapb.MachinaServer interface.
 type Server struct {
 	fingerprint uuid.UUID
 	tenantToken string
@@ -32,12 +33,15 @@ type Server struct {
 	machinapb.UnimplementedMachinaServer
 }
 
+var _ machinapb.MachinaServer = (*Server)(nil)
+
 type binaryHashOnce struct {
 	sync.Once
 	hash string
 	err  error
 }
 
+// NewServer constructs a new Server object.
 func NewServer(
 	fingerprint uuid.UUID,
 	tenantToken string,
@@ -54,9 +58,13 @@ func NewServer(
 
 // GetExecutable implements machinapb.MachinaServer.
 func (s *Server) GetExecutable(req *machinapb.GetExecutableRequest, stream machinapb.Machina_GetExecutableServer) error {
-	exeFile, err := os.Open("/proc/self/exe")
+	exe, err := os.Executable()
 	if err != nil {
-		return fmt.Errorf("failed to open /proc/self/exe: %w", err)
+		return fmt.Errorf("failed to get executable path: %w", err)
+	}
+	exeFile, err := os.Open(exe)
+	if err != nil {
+		return fmt.Errorf("failed to open executable at %s: %w", exe, err)
 	}
 	const chunkSize = 128 << 10
 	chunk := chunkpb.Chunk{
@@ -68,7 +76,7 @@ func (s *Server) GetExecutable(req *machinapb.GetExecutableRequest, stream machi
 			break
 		}
 		if err != nil {
-			return fmt.Errorf("failed to read from /proc/self/exe: %w", err)
+			return fmt.Errorf("failed to read executable from %s: %w", exe, err)
 		}
 		chunk.Data = chunk.Data[:n]
 		if err := stream.Send(&chunk); err != nil {
@@ -121,13 +129,9 @@ func (s *Server) Snapshot(stream machinapb.Machina_SnapshotServer) (err error) {
 	if _, ok := msg.Request.(*machinapb.SnapshotRequest_Snapshot_); !ok {
 		return fmt.Errorf("expected SnapshotRequest_Snapshot_ but got %T", msg.Request)
 	}
-	var output *machinapb.SnapshotResponse
-	for i := 0; i < 100; i++ {
-		var err error
-		output, err = snapshot.Snapshot(req)
-		if err != nil {
-			return fmt.Errorf("failed to snapshot: %w", err)
-		}
+	output, err := snapshot.Snapshot(req)
+	if err != nil {
+		return fmt.Errorf("failed to snapshot: %w", err)
 	}
 	if err := stream.Send(output); err != nil {
 		return fmt.Errorf("failed to send SnapshotResponse: %w", err)
@@ -142,20 +146,20 @@ func (s *Server) WatchProcesses(r *machinapb.WatchProcessesRequest, watchServer 
 	if err != nil {
 		return fmt.Errorf("failed to get binary hash: %w", err)
 	}
-	si, err := os.Stat("/proc/self")
+	ti, err := getStartTime()
 	if err != nil {
-		return fmt.Errorf("failed to stat /proc/self: %w", err)
+		return fmt.Errorf("failed to get start time: %w", err)
 	}
 	fingerprint := fmt.Sprintf(
 		"%s:%d:%d.%d",
 		s.fingerprint.String(),
 		os.Getpid(),
-		si.ModTime().Unix(),
-		si.ModTime().UnixNano()-si.ModTime().Unix()*1_000_000_000,
+		ti.Unix(),
+		ti.UnixNano()-ti.Unix()*1_000_000_000,
 	)
-	exePath, err := os.Readlink("/proc/self/exe")
+	exePath, err := os.Executable()
 	if err != nil {
-		return fmt.Errorf("failed to readlink /proc/self/exe: %w", err)
+		return fmt.Errorf("failed to get executable path: %w", err)
 	}
 
 	process := &machinapb.Process{
@@ -269,9 +273,13 @@ func (s *Server) getBinaryHash() (string, error) {
 var hashKey = [32]byte{}
 
 func doHash() (string, error) {
-	exeFile, err := os.Open("/proc/self/exe")
+	exe, err := os.Executable()
 	if err != nil {
-		return "", fmt.Errorf("failed to open /proc/self/exe: %w", err)
+		return "", fmt.Errorf("failed to get executable path: %w", err)
+	}
+	exeFile, err := os.Open(exe)
+	if err != nil {
+		return "", fmt.Errorf("failed to open executable file at %s: %w", exe, err)
 	}
 	hasher, err := highwayhash.New64(hashKey[:])
 	if err != nil {
@@ -282,5 +290,3 @@ func doHash() (string, error) {
 	}
 	return hex.EncodeToString(hasher.Sum(nil)), nil
 }
-
-var _ machinapb.MachinaServer = (*Server)(nil)

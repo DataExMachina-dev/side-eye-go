@@ -38,6 +38,9 @@ func (b *unwinder) walkStack(pc uintptr, fp uintptr) (pcs []uintptr, fps []uintp
 		return b.pcBuf[:b.numFrames], b.fpBuf[:b.numFrames]
 	}
 	for ; b.numFrames < maxStackFrames; b.numFrames++ {
+		if b.fpBuf[b.numFrames-1] == 0 {
+			break
+		}
 		nextCallFrame := b.fpBuf[b.numFrames-1]
 		if !stoptheworld.Dereference(
 			b.frameBufSlice,
@@ -49,9 +52,6 @@ func (b *unwinder) walkStack(pc uintptr, fp uintptr) (pcs []uintptr, fps []uintp
 
 		b.fpBuf[b.numFrames] = b.frameBuf.fp
 		b.pcBuf[b.numFrames] = b.frameBuf.pc
-		if b.fpBuf[b.numFrames] == 0 {
-			break
-		}
 	}
 	return b.pcBuf[:b.numFrames], b.fpBuf[:b.numFrames]
 }

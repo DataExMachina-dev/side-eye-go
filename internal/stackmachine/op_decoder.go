@@ -12,7 +12,7 @@ type OpDecoder struct {
 
 type OpCode uint8
 
-//go:generate stringer -type=OpCode
+//go:generate go run golang.org/x/tools/cmd/stringer@v0.22.0 -type=OpCode
 const (
 	OpCodeInvalid               OpCode = 0
 	OpCodeCall                  OpCode = 1
