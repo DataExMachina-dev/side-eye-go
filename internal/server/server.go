@@ -89,10 +89,12 @@ func (s *Server) GetExecutable(req *machinapb.GetExecutableRequest, stream machi
 // MachinaInfo implements machinapb.MachinaServer.
 func (s *Server) MachinaInfo(req *machinapb.MachinaInfoRequest, stream machinapb.Machina_MachinaInfoServer) error {
 	ctx := stream.Context()
+	// TODO: Populate the rest of the fields.For version, perhaps
+	// runtime.debug.ReadBuildInfo() is the ticket.
 	if err := stream.Send(&machinapb.MachinaInfoResponse{
 		Fingerprint: s.fingerprint.String(),
-		Hostname:    "asdf",
-		Version:     "asdf",
+		Hostname:    "",
+		Version:     "",
 		TenantToken: s.tenantToken,
 		Environment: s.environment,
 		IpAddresses: []string{},

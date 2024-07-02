@@ -88,11 +88,15 @@ func (o *outBuf) Dereference(offset uint32, ptr uintptr, dereferenceLen uint32) 
 	if offset+dereferenceLen > uint32(cap(o.out)) {
 		return false
 	}
-	if stoptheworld.Dereference(o.out[offset:offset+dereferenceLen], ptr, int(dereferenceLen)) {
-		return true
+	if !stoptheworld.Dereference(
+		o.Ptr(offset),
+		unsafe.Pointer(ptr),
+		int(dereferenceLen),
+	) {
+		o.Zero(offset, dereferenceLen)
+		return false
 	}
-	o.Zero(offset, dereferenceLen)
-	return false
+	return true
 }
 
 // Len return the length of the outBuf in bytes.

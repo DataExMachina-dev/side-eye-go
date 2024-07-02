@@ -23,9 +23,9 @@
 //
 // See https://github.com/golang/go/blob/f27a40ce/src/runtime/sys_linux_amd64.s#L460C1-L473C23
 TEXT ·sigreturn__sigaction(SB),NOSPLIT|NOFRAME,$0
-	MOVQ	$SYS_rt_sigreturn, AX
-	SYSCALL
-	INT $3	// not reached
+    MOVQ	$SYS_rt_sigreturn, AX
+    SYSCALL
+    INT $3	// not reached
 
 // setHandler sets up the sigsegvHandler and stores the old handler in oldHandler.
 //
@@ -42,8 +42,8 @@ TEXT ·sigreturn__sigaction(SB),NOSPLIT|NOFRAME,$0
 // }
 TEXT ·setHandler(SB), NOSPLIT, $0
     // state.snapshotTid = gettid()
-	MOVL	$SYS_gettid, AX
-	SYSCALL
+    MOVL	$SYS_gettid, AX
+    SYSCALL
     MOVL    AX, ·state+signalState_snapshotTid(SB)
 
     // var sa sigactiont
@@ -151,15 +151,15 @@ TEXT ·resetHandler(SB), NOSPLIT, $0
 // }
 TEXT ·sigsegvHandler(SB),NOSPLIT|TOPFRAME|NOFRAME,$0
     // func sigsegvHandler(sig uint64, info *siginfo, ctx *ucontext)
-	NOP	    SP		// disable vet stack checking
-	ADJSP   $24
+    NOP	    SP		// disable vet stack checking
+    ADJSP   $24
     MOVQ    DI, -16(SP) // sig
     MOVQ    SI, -8(SP)  // info
     MOVQ    DX, 0(SP)   // ctx
 
     // tid := gettid()
-	MOVL	$SYS_gettid, AX
-	SYSCALL
+    MOVL	$SYS_gettid, AX
+    SYSCALL
 
     // if tid != state.snapshotTid {
     //     goto passthrough

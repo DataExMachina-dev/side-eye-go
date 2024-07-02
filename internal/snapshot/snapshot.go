@@ -97,11 +97,9 @@ func newSnapshotter(p *snapshotpb.SnapshotProgram) *snapshotter {
 	b.stacks = make(map[uint64][]frameOfInterest, 512 /* arbitrary */)
 	b.out = makeOutBuf(1 << 20)
 	b.queue = makeQueue()
-	firstmoduledata := moduledata.GetFirstmoduledata()
-	textStart := *(*uintptr)(unsafe.Pointer(uintptr(firstmoduledata) + uintptr(p.RuntimeConfig.ModuledataTextOffset)))
-	base := textStart - uintptr(p.RuntimeConfig.TextDefaultStart)
+	base := stoptheworld.ComputeTextSectionBaseOffset(p.RuntimeConfig)
 	b.unwinder = newUnwinder(base)
-	b.goRuntimeTypeResolver = makeGoRuntimeTypeResolver(p.RuntimeConfig, firstmoduledata)
+	b.goRuntimeTypeResolver = makeGoRuntimeTypeResolver(p.RuntimeConfig, moduledata.GetFirstmoduledata())
 	b.typeIdResolver = typeIdResolver{types: p.GoRuntimeTypeToTypeId}
 	b.sm = newStackMachine(p.Prog, &b.queue, &b.out, &b.goRuntimeTypeResolver, &b.typeIdResolver)
 	return &b

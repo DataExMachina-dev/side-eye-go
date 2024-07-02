@@ -37,8 +37,7 @@ message RuntimeConfig {
   uint64 dereference_start_pc = 12;
   uint64 dereference_end_pc = 13;
 
-  // The vma of the text section as used as the base.
-  uint64 text_default_start = 15;
+  reserved 15;
 }
 
 message PcClassifier {

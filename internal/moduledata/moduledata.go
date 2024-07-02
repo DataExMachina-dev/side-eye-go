@@ -24,9 +24,8 @@ type funcInfo struct {
 
 // GetFirstmoduledata returns the address of the firstmoduledata variable.
 func GetFirstmoduledata() unsafe.Pointer {
-	// The approachg here is somewhat hacky, but it works and should remain
-	// stable because the function we're depending on has been marked as a
-	// stable runtime API.
+	// The approach here is somewhat hacky, but it works and should remain
+	// stable because the function has been marked as a stable runtime API.
 	//
 	// The observation is that the runtime.findfunc function returns a structure
 	// with a pointer to the runtime.moduledata for the function being looked

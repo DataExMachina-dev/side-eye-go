@@ -46,8 +46,8 @@ func (g Goroutine) PC() uintptr {
 // TODO(https://github.com/DataExMachina-dev/side-eye/issues/756): Note that
 // this is currently buggy when the goroutine is in a syscall. In later go versions
 // (go1.23+), callers should be able to use syscallbp.
-func (g Goroutine) BP() uintptr {
-	return *(*uintptr)(unsafe.Pointer(uintptr(g.gPtr) + uintptr(g.config.GGoBufBpOffset)))
+func (g Goroutine) BP() unsafe.Pointer {
+	return *(*unsafe.Pointer)(unsafe.Pointer(uintptr(g.gPtr) + uintptr(g.config.GGoBufBpOffset)))
 }
 
 // SyscallPC returns the program counter of the syscall.
