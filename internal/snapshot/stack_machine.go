@@ -1,17 +1,14 @@
-package stackmachine
+package snapshot
 
 import (
 	"unsafe"
+
+	. "github.com/DataExMachina-dev/side-eye-go/internal/stackmachine"
 )
 
 // TODO: Figure out if these generics buy literally anything compared to just
 // using a interfaces. Also worth comparing against the concrete types.
-type StackMachine[
-	Q Queue,
-	B OutBuf,
-	G GoRuntimeTypeResolver,
-	T TypeIDResolver,
-] struct {
+type stackMachine struct {
 	stack []uint32
 
 	// Pointer to the end of the outBuf
@@ -19,10 +16,10 @@ type StackMachine[
 	cfa     uintptr
 	decoder OpDecoder
 
-	q Q
-	b B
-	g G
-	t T
+	q *queue
+	b *outBuf
+	g *goRuntimeTypeResolver
+	t *typeIdResolver
 }
 
 type Queue interface {
@@ -58,32 +55,32 @@ type TypeIDResolver interface {
 	ResolveGoRuntimeTypeToTypeId(addr uint64) uint32
 }
 
-func New[Q Queue, B OutBuf, G GoRuntimeTypeResolver, T TypeIDResolver](
+func newStackMachine(
 	prog []byte,
-	q Q,
-	b B,
-	g G,
-	t T,
-) *StackMachine[Q, B, G, T] {
-	return &StackMachine[Q, B, G, T]{
-		stack: make([]uint32, 0, 64),
-		decoder: OpDecoder{
-			opBuf: prog,
-		},
-		q: q,
-		b: b,
-		g: g,
-		t: t,
+	q *queue,
+	b *outBuf,
+	g *goRuntimeTypeResolver,
+	t *typeIdResolver,
+) *stackMachine {
+	return &stackMachine{
+		stack:   make([]uint32, 0, 64),
+		decoder: MakeOpDecoder(prog),
+		q:       q,
+		b:       b,
+		g:       g,
+		t:       t,
 	}
 }
 
-func (s *StackMachine[Q, B, G, T]) Run(
+func (s *stackMachine) Run(
 	pc uint32,
 	cfa uintptr,
 	depth uint32,
 	offset uint32,
 ) bool {
-	s.decoder.pc = pc
+	if !s.decoder.SetPC(pc) {
+		return false
+	}
 	s.cfa = cfa
 	s.offset = offset
 
@@ -94,13 +91,17 @@ func (s *StackMachine[Q, B, G, T]) Run(
 			return false
 		case OpCodeCall:
 			call := s.decoder.DecodeCall()
-			s.stack = append(s.stack, s.decoder.pc)
-			s.decoder.pc = call.Pc
+			s.stack = append(s.stack, s.decoder.PC())
+			if !s.decoder.SetPC(call.Pc) {
+				return false
+			}
 
 		case OpCodeCondJump:
 			condJump := s.decoder.DecodeCondJump()
 			if s.stack[len(s.stack)-1] != 0 {
-				s.decoder.pc = condJump.Pc
+				if !s.decoder.SetPC(condJump.Pc) {
+					return false
+				}
 			}
 
 		case OpCodeDecrement:
@@ -219,7 +220,9 @@ func (s *StackMachine[Q, B, G, T]) Run(
 
 		case OpCodeJump:
 			jump := s.decoder.DecodeJump()
-			s.decoder.pc = jump.Pc
+			if !s.decoder.SetPC(jump.Pc) {
+				return false
+			}
 
 		case OpCodePop:
 			_ = s.decoder.DecodePop()
@@ -243,7 +246,9 @@ func (s *StackMachine[Q, B, G, T]) Run(
 			if len(s.stack) == 0 {
 				return true
 			}
-			s.decoder.pc = s.stack[len(s.stack)-1]
+			if !s.decoder.SetPC(s.stack[len(s.stack)-1]) {
+				return false
+			}
 			s.stack[len(s.stack)-1] = 0 // not needed
 			s.stack = s.stack[:len(s.stack)-1]
 

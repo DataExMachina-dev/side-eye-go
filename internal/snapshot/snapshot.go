@@ -13,7 +13,6 @@ import (
 	"github.com/DataExMachina-dev/side-eye-go/internal/machinapb"
 	"github.com/DataExMachina-dev/side-eye-go/internal/moduledata"
 	"github.com/DataExMachina-dev/side-eye-go/internal/snapshotpb"
-	"github.com/DataExMachina-dev/side-eye-go/internal/stackmachine"
 	"github.com/DataExMachina-dev/side-eye-go/internal/stoptheworld"
 )
 
@@ -104,7 +103,7 @@ func newSnapshotter(p *snapshotpb.SnapshotProgram) *snapshotter {
 	b.unwinder = newUnwinder(base)
 	b.goRuntimeTypeResolver = makeGoRuntimeTypeResolver(p.RuntimeConfig, firstmoduledata)
 	b.typeIdResolver = typeIdResolver{types: p.GoRuntimeTypeToTypeId}
-	b.sm = stackmachine.New(p.Prog, &b.queue, &b.out, &b.goRuntimeTypeResolver, &b.typeIdResolver)
+	b.sm = newStackMachine(p.Prog, &b.queue, &b.out, &b.goRuntimeTypeResolver, &b.typeIdResolver)
 	return &b
 }
 
@@ -118,7 +117,7 @@ type snapshotter struct {
 	queue                 queue
 	unwinder              *unwinder
 	p                     *snapshotpb.SnapshotProgram
-	sm                    *stackmachine.StackMachine[*queue, *outBuf, *goRuntimeTypeResolver, *typeIdResolver]
+	sm                    *stackMachine
 }
 
 func (s *snapshotter) snapshotGoroutine(snapshotHeader *framing.SnapshotHeader, g allgs.Goroutine) {

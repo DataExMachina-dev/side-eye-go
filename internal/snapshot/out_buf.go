@@ -4,21 +4,8 @@ import (
 	"unsafe"
 
 	"github.com/DataExMachina-dev/side-eye-go/internal/framing"
-	"github.com/DataExMachina-dev/side-eye-go/internal/stackmachine"
 	"github.com/DataExMachina-dev/side-eye-go/internal/stoptheworld"
 )
-
-type outBufI interface {
-	stackmachine.OutBuf
-
-	writeStack(stack []uintptr) (uint32, bool)
-	writeSnapshotHeader() (*framing.SnapshotHeader, bool)
-	writeGoroutineHeader() (*framing.GoroutineHeader, bool)
-	writeQueueEntry(entry framing.QueueEntry) (dataOffset uint32, ok bool)
-	truncate(offset uint32)
-	full() bool
-	data() []byte
-}
 
 type outBuf struct {
 	out    []byte
@@ -189,5 +176,3 @@ func (o *outBuf) writeStack(stack []uintptr) (uint32, bool) {
 	copy(o.out[offset:], unsafe.Slice((*byte)(unsafe.Pointer(&stack[0])), byteLen))
 	return byteLen, true
 }
-
-var _ stackmachine.OutBuf = (*outBuf)(nil)

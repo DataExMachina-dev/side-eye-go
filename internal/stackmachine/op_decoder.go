@@ -5,9 +5,32 @@ import (
 	"fmt"
 )
 
+// OpDecoder is a decoder for stack machine operations.
 type OpDecoder struct {
 	pc    uint32
 	opBuf []byte
+}
+
+// MakeOpDecoder creates a new OpDecoder.
+func MakeOpDecoder(opBuf []byte) OpDecoder {
+	return OpDecoder{
+		pc:    0,
+		opBuf: opBuf,
+	}
+}
+
+// SetPC sets the program counter of the decoder.
+func (d *OpDecoder) SetPC(pc uint32) bool {
+	if pc >= uint32(len(d.opBuf)) {
+		return false
+	}
+	d.pc = pc
+	return true
+}
+
+// PC returns the program counter of the decoder.
+func (d *OpDecoder) PC() uint32 {
+	return d.pc
 }
 
 type OpCode uint8
