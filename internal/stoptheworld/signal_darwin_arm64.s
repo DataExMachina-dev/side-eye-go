@@ -9,25 +9,24 @@
 #define SIGSEGV 11
 
 TEXT notok<>(SB),NOSPLIT,$0
-	MOVD	$0, R8
-	MOVD	R8, (R8)
-	B	0(PC)
+    MOVD    $0, R8
+    MOVD    R8, (R8)
+    B       0(PC)
 
 // setHandler sets up the sigsegvHandler and stores the old handler in oldHandler.
 //
 // func setHandler() {
 //     state.snapshotTid = gettid()
-//     var sa sigactiont
+//     var sa usigactiont
 //     { // initialize_sa
 //         sa.sa_flags = saFlags
-//         sa.sa_restorer = runtime·sigreturn__sigaction
-//         sa.handler = sigsegvHandler
+//         sa.__sigaction_u = sigsegvHandler
 //         sa.sa_mask = ^uint64(0)
 //     }
-//     return rt_sigaction(SIGSEGV, &sa, &state.prevAction, unsafe.Sizeof(sa.sa_mask))
+//     rt_sigaction(SIGSEGV, &sa, &state.prevAction.prevSigsegv, unsafe.Sizeof(sa.sa_mask))
+//     rt_sigaction(SIGBUS, &sa, &state.prevAction.prevSigbus, unsafe.Sizeof(sa.sa_mask))
 // }
 TEXT ·setHandler(SB), NOSPLIT, $0
-    // var sa usigactiont
     SUB     $0x20, RSP
     MOVD    $SIGSEGV, R3
 start:
@@ -44,37 +43,33 @@ clear_loop:
     B       clear_loop                   // Repeat loop
 
 initialize_sa:
-    // sa.sa_flags = saFlags
     MOVW    $const_saFlags, R2
     MOVW    R2, usigactiont_sa_flags(RSP)
-    // sa.handler = sigsegvHandler
     MOVD    $·sigsegvHandler(SB), R0
     MOVD    R0, usigactiont___sigaction_u(RSP)
-    // sa.sa_mask = ^uint64(0)
     MOVD    $0, R0
     MVN     R0, R0
     MOVW    R0, usigactiont_sa_mask(RSP)
 
-    // return rt_sigaction(SIGSEGV, &sa, &state.prevAction, unsafe.Sizeof(sa.sa_mask))
     CMP     $SIGBUS, R3
     BEQ     sigbus
     MOVW    $SIGSEGV, R0
     MOVD    RSP, R1
     MOVD    $·state+signalState_prevAction+sigaction_prevSigsegv(SB), R2
-    BL	    libc_sigaction(SB)
-	CMP	    $0, R0
-	BEQ	    2(PC)
-	BL	    notok<>(SB)
+    BL      libc_sigaction(SB)
+    CMP     $0, R0
+    BEQ     2(PC)
+    BL      notok<>(SB)
     MOVD    $SIGBUS, R3
     B       start 
 sigbus:
     MOVW    $SIGBUS, R0
     MOVD    RSP, R1
     MOVD    $·state+signalState_prevAction+sigaction_prevSigbus(SB), R2
-    BL	    libc_sigaction(SB)
-	CMP	    $0, R0
-	BEQ	    2(PC)
-	BL	    notok<>(SB)
+    BL      libc_sigaction(SB)
+    CMP     $0, R0
+    BEQ     2(PC)
+    BL      notok<>(SB)
 done:
     ADD     $0x20, RSP
     RET
@@ -83,24 +78,25 @@ done:
 //
 // func resetHandler() {
 //     state.snapshotTid = 0
-//     return rt_sigaction(SIGSEGV, &state.prevAction, nil, unsafe.Sizeof(sa.sa_mask))
+//     rt_sigaction(SIGSEGV, &state.prevAction.prevSigsegv, nil, unsafe.Sizeof(sa.sa_mask))
+//     rt_sigaction(SIGSEGV, &state.prevAction.prevSigbus, nil, unsafe.Sizeof(sa.sa_mask))
 // }
 //
 TEXT ·resetHandler(SB), NOSPLIT, $0
     MOVD    $SIGSEGV, R0
     MOVD    $·state+signalState_prevAction+sigaction_prevSigsegv(SB), R1
     MOVD    $0, R2
-    BL	libc_sigaction(SB)
-	CMP	$0, R0
-	BEQ	2(PC)
-	BL	notok<>(SB)
+    BL      libc_sigaction(SB)
+    CMP     $0, R0
+    BEQ     2(PC)
+    BL      notok<>(SB)
     MOVD    $SIGBUS, R0
     MOVD    $·state+signalState_prevAction+sigaction_prevSigbus(SB), R1
     MOVD    $0, R2
-    BL	libc_sigaction(SB)
-	CMP	$0, R0
-	BEQ	2(PC)
-	BL	notok<>(SB)
+    BL      libc_sigaction(SB)
+    CMP     $0, R0
+    BEQ     2(PC)
+    BL      notok<>(SB)
     RET
 
 // This is an arbitrary number of frames we need to check in order
@@ -113,10 +109,6 @@ TEXT ·resetHandler(SB), NOSPLIT, $0
 // to the previously installed signal handler.
 //
 // func sigsegvHandler(sig uint64, info *siginfo, ctx *ucontext) {
-//    tid := gettid()
-//    if tid != state.snapshotTid {
-//        goto passthrough
-//    }
 //    sigctx := ctx.uc_mcontext        // BX
 //    pc := sigctx.rip                 // CX
 //    fp := sigctx.rbp                 // R8
@@ -148,15 +140,15 @@ TEXT ·resetHandler(SB), NOSPLIT, $0
 //    exec(func() { state.prevAction.handler(sig, info, ctx) })
 // }
 TEXT ·sigsegvHandler(SB),NOSPLIT|TOPFRAME,$176
-	// Save callee-save registers in the case of signal forwarding.
-	// Please refer to https://golang.org/issue/31827 .
-	SAVE_R19_TO_R28(8*4)
-	SAVE_F8_TO_F15(8*14)
+    // Save callee-save registers in the case of signal forwarding.
+    // Please refer to https://golang.org/issue/31827 .
+    SAVE_R19_TO_R28(8*4)
+    SAVE_F8_TO_F15(8*14)
 
-	// Save arguments.
-	MOVW	R0, (8*1)(RSP)	// sig
-	MOVD	R1, (8*2)(RSP)	// info
-	MOVD	R2, (8*3)(RSP)	// ctx
+    // Save arguments.
+    MOVW    R0, (8*1)(RSP)	// sig
+    MOVD    R1, (8*2)(RSP)	// info
+    MOVD    R2, (8*3)(RSP)	// ctx
 
     // sigctx := ctx.uc_mcontext        // R4
     MOVD    R2, R4 // BX = ctx
@@ -203,13 +195,13 @@ loop_start:
     MOVD    R8, R0
     ADD     $8, R0
     MOVD    R0, (mcontext64_ss + regs64_sp)(R4)
-    MOVD    R8, (mcontext64_ss + regs64_fp)(R4) // gr[REG_RSP] = fp + 16
+    MOVD    R8, (mcontext64_ss + regs64_fp)(R4)
     // sigctx.rax = 0 // mark failure
-    MOVD   $0, R0
-    MOVD   R0, (mcontext64_ss + regs64_x)(R4)
+    MOVD    $0, R0
+    MOVD    R0, (mcontext64_ss + regs64_x)(R4)
 
     RESTORE_R19_TO_R28(8*4)
-	RESTORE_F8_TO_F15(8*14)
+    RESTORE_F8_TO_F15(8*14)
     RET
 
 loop_continue:
@@ -230,10 +222,8 @@ passthrough:
     // exec(func() { state.prevAction.sa_handler(sig, info, ctx) })
     MOVD    (8*1)(RSP), R0 // sig
     MOVD    (8*2)(RSP), R1 // info
-    MOVD    (8*3)(RSP), R2   // ctx
+    MOVD    (8*3)(RSP), R2 // ctx
     RESTORE_R19_TO_R28(8*4)
-	RESTORE_F8_TO_F15(8*14)
+    RESTORE_F8_TO_F15(8*14)
     MOVD    ·state+signalState_prevAction+usigactiont___sigaction_u(SB), R7
     B       (R7)
-
-
