@@ -26,7 +26,7 @@ func ForEach(cfg *snapshotpb.RuntimeConfig, f func(Goroutine)) {
 	})
 }
 
-//go:linkname forEachG runtime.forEachG
+//go:linkname forEachG runtime.forEachGRace
 func forEachG(func(pointer unsafe.Pointer))
 
 // Status is the status of a goroutine.

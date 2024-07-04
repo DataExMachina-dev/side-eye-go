@@ -289,6 +289,14 @@ func (s *stackMachine) Run(
 				return false
 			}
 			s.offset = offset
+
+		case OpCodeIllegal:
+			// This should be totally bogus and generally will not be aligned.
+			v := (*uint64)(unsafe.Pointer(uintptr(pc)))
+			if *v > 0 {
+				return false
+			}
+
 		}
 	}
 

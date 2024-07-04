@@ -70,9 +70,13 @@ func Snapshot(p *snapshotpb.SnapshotProgram) (*machinapb.SnapshotResponse, error
 	if !ok {
 		return nil, fmt.Errorf("failed to write snapshot header")
 	}
-	stoptheworld.StopTheWorld(p.RuntimeConfig, func() {
+	if !stoptheworld.StopTheWorld(p.RuntimeConfig, func() {
 		allgs.ForEach(p.RuntimeConfig, func(g allgs.Goroutine) {
+			before := b.out.Len()
 			b.snapshotGoroutine(snapshotHeader, g)
+			if b.out.full() {
+				b.out.truncate(before)
+			}
 		})
 
 		afterStacks := time.Now()
@@ -81,7 +85,9 @@ func Snapshot(p *snapshotpb.SnapshotProgram) (*machinapb.SnapshotResponse, error
 
 		b.processQueue()
 		snapshotHeader.Statistics.PointerDurationNs = uint64(time.Since(afterStacks).Nanoseconds())
-	})
+	}) {
+		return nil, fmt.Errorf("failed to execute snapshot")
+	}
 	snapshotHeader.DataByteLen = b.out.Len()
 	snapshotHeader.Statistics.TotalDurationNs = uint64(time.Since(start).Nanoseconds())
 	return &machinapb.SnapshotResponse{
@@ -122,11 +128,6 @@ func (s *snapshotter) snapshotGoroutine(snapshotHeader *framing.SnapshotHeader, 
 	if s.out.full() {
 		return
 	}
-	defer func(before uint32) {
-		if s.out.full() {
-			s.out.truncate(before)
-		}
-	}(s.out.Len())
 
 	status := g.Status() & (^allgs.Status(allgs.Status_Gscan))
 	if status == allgs.Status_Gdead {

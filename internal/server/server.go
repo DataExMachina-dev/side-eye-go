@@ -19,6 +19,8 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/minio/highwayhash"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
@@ -133,7 +135,7 @@ func (s *Server) Snapshot(stream machinapb.Machina_SnapshotServer) (err error) {
 	}
 	output, err := snapshot.Snapshot(req)
 	if err != nil {
-		return fmt.Errorf("failed to snapshot: %w", err)
+		return status.Errorf(codes.Internal, "failed to snapshot: %v", err)
 	}
 	if err := stream.Send(output); err != nil {
 		return fmt.Errorf("failed to send SnapshotResponse: %w", err)

@@ -60,6 +60,7 @@ const (
 	OpCodeCopyFromRegister      OpCode = 20
 	OpCodeZeroFill              OpCode = 21
 	OpCodePrepareFrameData      OpCode = 22
+	OpCodeIllegal               OpCode = 23
 )
 
 type (
@@ -126,6 +127,7 @@ type (
 		DataByteLen uint32
 		TypeID      uint32
 	}
+	OpIllegal struct{}
 )
 
 func (d *OpDecoder) PopOpCode() OpCode {
@@ -278,6 +280,9 @@ func (d *OpDecoder) DecodePrepareFrameData() OpPrepareFrameData {
 		TypeID:      typeID,
 	}
 }
+func (d *OpDecoder) DecodeIllegal() OpIllegal {
+	return OpIllegal{}
+}
 
 type Op struct {
 	Pc   int32
@@ -362,6 +367,9 @@ func (d *OpDecoder) PeekOp() Op {
 
 	case OpCodePrepareFrameData:
 		op = d.DecodePrepareFrameData()
+
+	case OpCodeIllegal:
+		op = d.DecodeIllegal()
 
 	}
 	return Op{

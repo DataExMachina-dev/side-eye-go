@@ -113,42 +113,6 @@ TEXT ·resetHandler(SB), NOSPLIT, $0
 // for a magic dereference function. If this function is found, then set
 // the context to look like this function had returned 0. Otherwise, jump
 // to the previously installed signal handler.
-//
-// func sigsegvHandler(sig uint64, info *siginfo, ctx *ucontext) {
-//    tid := gettid()
-//    if tid != state.snapshotTid {
-//        goto passthrough
-//    }
-//    sigctx := ctx.uc_mcontext        // BX
-//    pc := sigctx.rip                 // CX
-//    fp := sigctx.rbp                 // R8
-//    i := 0                           // SI
-// loop_start:
-//    if fp == 0 {
-//        goto passthrough
-//    }
-//    next_fp = *(uintptr_t *)(fp)     // R9
-//    next_pc = *(uintptr_t *)(fp + 8) // R10
-//    if pc < state.dereferenceStart {
-//        goto loop_continue
-//    }
-//    if pc >= state.dereferenceEnd {
-//        goto loop_continue
-//    }
-//    sigctx.rbp = next_fp
-//    sigctx.rip = next_pc
-//    sigctx.rsp = fp + 16
-//    sigctx.rax = 0 // mark failure
-//    return
-// loop_continue:
-//    fp, pc = next_fp, next_pc
-//    i += 1
-//    if i < FRAMES_TO_CHECK {
-//        goto loop_start
-//    }
-// passthrough:
-//    exec(func() { state.prevAction.handler(sig, info, ctx) })
-// }
 TEXT ·sigsegvHandler(SB),NOSPLIT|TOPFRAME|NOFRAME,$0
     // func sigsegvHandler(sig uint64, info *siginfo, ctx *ucontext)
     NOP	    SP		// disable vet stack checking
@@ -181,10 +145,10 @@ TEXT ·sigsegvHandler(SB),NOSPLIT|TOPFRAME|NOFRAME,$0
 
 loop_start:
     // if fp == 0 {
-    //     goto passthrough
+    //     goto maybe_recover
     // }
     TESTQ   R8, R8
-    JZ      passthrough
+    JZ      maybe_recover
 
     // next_fp = *(uintptr_t *)(fp)     // R9
     MOVQ    (R8), R9
@@ -215,6 +179,7 @@ loop_start:
     XORQ    AX, AX
     MOVQ    AX, sigcontext_rax(BX)
 
+ret:
     MOVQ    -16(SP), DI // sig
     MOVQ    -8(SP), SI  // info
     MOVQ    0(SP), DX   // ctx
@@ -234,6 +199,48 @@ loop_continue:
     CMPQ    SI, $FRAMES_TO_CHECK
     JL      loop_start
 
+maybe_recover:
+    // If the recovery state is set, then the only running goroutine
+    // should be our goroutine, and we should be looking to recover
+    // it by unwinding to its stoptheworld call.
+
+    // cfg := state.config  // DI
+    MOVQ    ·state+signalState_config(SB), DI
+    // if cfg == nil { goto passthrough }
+    TESTQ   DI, DI
+    JZ      passthrough 
+
+    // g := state.gPtr // R14
+    MOVQ    ·state+signalState_gPtr(SB), R14
+    // if g == nil { goto passthrough }
+    TESTQ   R14, R14
+    JZ      passthrough
+
+    // stackTop := *(g + config.GStktopspOffset)
+    MOVL    config_GStktopspOffset(DI), CX
+    ADDQ    R14, CX
+    MOVQ    (CX), CX
+
+    // unwindFramePointer := stackTop - state.recoveryFrameBaseOffset
+    SUBQ    ·state+signalState_recoveryFrameBaseOffset(SB), CX
+
+    // sigctx.rbp = *unwindFramePointer
+    MOVQ    (CX), AX
+    MOVQ    AX, sigcontext_rbp(BX)
+
+    // sigctx.rip = *(unwindFramePointer + 8)
+    MOVQ    8(CX), AX
+    MOVQ    AX, sigcontext_rip(BX)
+
+    // sigctx.rsp = unwindFramePointer + 16
+    LEAQ    16(CX), AX
+    MOVQ    AX, sigcontext_rsp(BX) // gr[REG_RSP] = fp + 16
+
+    // sigctx.rax = 0 // mark failure
+    XORQ    AX, AX
+    MOVQ    AX, sigcontext_rax(BX)
+    JMP     ret
+
 passthrough:
     // exec(func() { state.prevAction.sa_handler(sig, info, ctx) })
     MOVQ    -16(SP), DI // sig
@@ -242,3 +249,18 @@ passthrough:
     ADJSP	$-24
     MOVQ    ·state+signalState_prevAction+sigactiont_sa_handler(SB), AX
     JMP     AX
+
+// setRecoveryState records the g pointer and it records the offset of the
+// frame pointer in the wrapper function from the top of the g stack. This
+// enables recovery inside the handler.
+TEXT ·setRecoveryState(SB), NOSPLIT|TOPFRAME|NOFRAME, $0
+    MOVQ    R14, ·state+signalState_gPtr(SB)
+    MOVQ    ·state+signalState_config(SB), CX
+    MOVL    config_GStktopspOffset(CX), SI
+    MOVQ    R14, AX
+    ADDQ    SI, AX
+    MOVQ    (AX), SI
+    MOVQ    BP, DI
+    SUBQ    DI, SI
+    MOVQ    SI, ·state+signalState_recoveryFrameBaseOffset(SB)
+    RET

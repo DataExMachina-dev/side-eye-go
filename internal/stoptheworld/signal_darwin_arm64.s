@@ -103,42 +103,14 @@ TEXT ·resetHandler(SB), NOSPLIT, $0
 // to find if we're in dereference. It probably only needs to be 3.
 #define FRAMES_TO_CHECK 4
 
-// A sigaction handler for segfaults that unwinds the stack a bit to look
-// for a magic dereference function. If this function is found, then set
-// the context to look like this function had returned 0. Otherwise, jump
-// to the previously installed signal handler.
+// A sigaction handler for segfaults that unwinds the stack a bit to look for a
+// magic dereference function. If this function is found, then set the context
+// to look like this function had returned 0. Otherwise, jump to the previously
+// installed signal handler.
 //
-// func sigsegvHandler(sig uint64, info *siginfo, ctx *ucontext) {
-//    sigctx := ctx.uc_mcontext        // BX
-//    pc := sigctx.rip                 // CX
-//    fp := sigctx.rbp                 // R8
-//    i := 0                           // SI
-// loop_start:
-//    if fp == 0 {
-//        goto passthrough
-//    }
-//    next_fp = *(uintptr_t *)(fp)     // R9
-//    next_pc = *(uintptr_t *)(fp + 8) // R10
-//    if pc < state.dereferenceStart {
-//        goto loop_continue
-//    }
-//    if pc >= state.dereferenceEnd {
-//        goto loop_continue
-//    }
-//    sigctx.rbp = next_fp
-//    sigctx.rip = next_pc
-//    sigctx.rsp = fp + 16
-//    sigctx.rax = 0 // mark failure
-//    return
-// loop_continue:
-//    fp, pc = next_fp, next_pc
-//    i += 1
-//    if i < FRAMES_TO_CHECK {
-//        goto loop_start
-//    }
-// passthrough:
-//    exec(func() { state.prevAction.handler(sig, info, ctx) })
-// }
+// Another wrinkle is if the function is not found, but relevant recovery state
+// is stored in the state structure (only set while the world is stopped), then
+// unwind the stack to that point. This is the more brutal form of recovery.
 TEXT ·sigsegvHandler(SB),NOSPLIT|TOPFRAME,$176
     // Save callee-save registers in the case of signal forwarding.
     // Please refer to https://golang.org/issue/31827 .
@@ -163,10 +135,8 @@ TEXT ·sigsegvHandler(SB),NOSPLIT|TOPFRAME,$176
     MOVD    $0, R9
 
 loop_start:
-    // if fp == 0 {
-    //     goto passthrough
-    // }
-    CBZ     R6, passthrough
+    // if fp == 0 { goto maybe_recover }
+    CBZ     R6, maybe_recover
 
     // next_pc = *(uintptr_t *)(fp + 8) // R7
     MOVD    8(R6), R7
@@ -200,6 +170,7 @@ loop_start:
     MOVD    $0, R0
     MOVD    R0, (mcontext64_ss + regs64_x)(R4)
 
+ret:
     RESTORE_R19_TO_R28(8*4)
     RESTORE_F8_TO_F15(8*14)
     RET
@@ -216,7 +187,50 @@ loop_continue:
     // }
     MOVD   $FRAMES_TO_CHECK, R0
     CMP    R9, R0
-    BL     loop_start
+    BNE    loop_start
+
+maybe_recover:
+    // If the recovery state is set, then the only running goroutine
+    // should be our goroutine, and we should be looking to recover
+    // it by unwinding to its stoptheworld call.
+
+    // cfg := state.config  // DI
+    MOVD    ·state+signalState_config(SB), R6
+    // if cfg == nil { goto passthrough }
+    CBZ     R6, passthrough
+
+    // g := state.gPtr // R14
+    MOVD    ·state+signalState_gPtr(SB), R9
+    // if g == nil { goto passthrough }
+    CBZ     R9, passthrough
+
+    // stackTop := *(g + config.GStktopspOffset)
+    MOVW    config_GStktopspOffset(R6), R7
+    ADD     R9, R7
+    MOVD    (R7), R7
+
+    // unwindFramePointer := stackTop - state.recoveryFrameBaseOffset
+    MOVD    ·state+signalState_recoveryFrameBaseOffset(SB), R8
+    SUB     R8, R7
+
+    MOVD    8(R7), R1
+    MOVD    R1,  (mcontext64_ss + regs64_pc)(R4)
+
+    MOVD    (R7), R1
+    MOVD    R1,  (mcontext64_ss + regs64_fp)(R4)
+    ADD     $8, R1
+    MOVD    R1, (mcontext64_ss + regs64_sp)(R4)
+
+    // It's not obvious that it matters that we set the LR because it's
+    // going to get set before the return, but we do it anyway.
+    MOVD    (R1), R1
+    MOVD    R1, (mcontext64_ss + regs64_lr)(R4)
+
+
+    // sigctx.rax = 0 // mark failure
+    MOVD    $0, R1
+    MOVD    R1,  (mcontext64_ss + regs64_x)(R4)
+    B       ret
 
 passthrough:
     // exec(func() { state.prevAction.sa_handler(sig, info, ctx) })
@@ -227,3 +241,18 @@ passthrough:
     RESTORE_F8_TO_F15(8*14)
     MOVD    ·state+signalState_prevAction+usigactiont___sigaction_u(SB), R7
     B       (R7)
+
+// setRecoveryState records the g pointer and it records the offset of the
+// frame pointer in the wrapper function from the top of the g stack. This
+// enables recovery inside the handler.
+TEXT ·setRecoveryState(SB), NOSPLIT|TOPFRAME|NOFRAME, $0
+    MOVD    g, ·state+signalState_gPtr(SB)
+    MOVD    ·state+signalState_config(SB), R7
+    MOVW    config_GStktopspOffset(R7), R8
+    MOVD    g, R9
+    ADD     R8, R9
+    MOVD    (R9), R8
+    MOVD    R29, R10
+    SUB     R10, R8
+    MOVD    R8, ·state+signalState_recoveryFrameBaseOffset(SB)
+    RET

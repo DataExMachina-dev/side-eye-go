@@ -14,26 +14,15 @@ var dereferenceAddr = **(**uintptr)(unsafe.Pointer(&dereference))
 
 // StopTheWorld is a magical function that calls f with the world stopped.
 //
-// The function must not panic or perform any IO or blocking operations.
+// The function must not panic or perform any IO or blocking operations,
+// and may not defer any functions.
 //
 // Additionally, if the function wants to read unsafe memory, it must use
 // the Dereference function. This function interacts with signal handlers
 // that are set up by this call.
-func StopTheWorld(config *snapshotpb.RuntimeConfig, f func()) {
-
-	// TODO: Add another layer of protection to ensure that this function can
-	// recover from unexpected segfaults, including in the signal handler.
-	//
-	// One approach to do this would be to create another call frame and inside
-	// of that call frame, work out the offset to its frame pointer from the
-	// stack root and stash that somewhere along with the g pointer itself.
-	// Then, if we get a segfault, we can use that offset and the stack base in
-	// the g to work out the corrected frame pointer and simulate returning from
-	// that function.
-	//
-	// We'd want to take care to ensure that no defer underneath that function
-	// needs to run.
-
+//
+//go:noinline
+func StopTheWorld(config *snapshotpb.RuntimeConfig, f func()) (ok bool) {
 	runtime.LockOSThread()
 	defer runtime.UnlockOSThread()
 
@@ -42,8 +31,8 @@ func StopTheWorld(config *snapshotpb.RuntimeConfig, f func()) {
 	state.mu.Lock()
 	defer state.mu.Unlock()
 
-	state.dereferenceStart = uintptr(config.DereferenceStartPc) + base
-	state.dereferenceEnd = uintptr(config.DereferenceEndPc) + base
+	state.setConfig(config, base)
+	defer state.clearConfig()
 
 	setHandler()
 	defer resetHandler()
@@ -51,8 +40,25 @@ func StopTheWorld(config *snapshotpb.RuntimeConfig, f func()) {
 	ws := stopTheWorld(stwStartTrace)
 	defer startTheWorld(ws)
 
-	f()
+	defer clearRecoveryState()
+	return stopTheWorldWrapper(f)
 }
+
+// This wrapper function is used by the signal handler as a sort of longjmp
+// target. The setRecoveryState call sets up the state for the signal handler
+// to recover to the return of this function.
+//
+//go:noinline
+func stopTheWorldWrapper(f func()) bool {
+	setRecoveryState()
+	f()
+	return true
+}
+
+// Used in assembly.
+//
+//lint:ignore U1000 this is used in assembly.
+type config = snapshotpb.RuntimeConfig
 
 // ComputeTextSectionBaseOffset computes the base offset of the text section
 // from its base address in the object file. This can be non-zero when aslr
@@ -66,12 +72,33 @@ var state = signalState{}
 type signalState struct {
 	mu                               sync.Mutex
 	dereferenceStart, dereferenceEnd uintptr
+
 	//lint:ignore U1000 this is used in assembly.
 	prevAction sigaction
 	//lint:ignore U1000 this is used in assembly.
 	snapshotTid uint32
-	//lint:ignore U1000 this is used in assembly.
-	base uint64
+	//lint:ignore U1000 this is read from assembly.
+	gPtr unsafe.Pointer
+
+	// Offset from the stack top to the base of the recovery frame.
+	recoveryFrameBaseOffset uintptr
+
+	config *snapshotpb.RuntimeConfig
+}
+
+func (s *signalState) setConfig(
+	config *snapshotpb.RuntimeConfig,
+	base uintptr,
+) {
+	s.config = config
+	s.dereferenceStart = uintptr(config.DereferenceStartPc) + base
+	s.dereferenceEnd = uintptr(config.DereferenceEndPc) + base
+}
+
+func (s *signalState) clearConfig() {
+	s.config = nil
+	s.dereferenceStart = 0
+	s.dereferenceEnd = 0
 }
 
 // Set the signal handler to one that can gracefully recover from a segfault
@@ -90,6 +117,13 @@ func sigreturn__sigaction()
 
 //lint:ignore U1000 this is used in assembly.
 func sigsegvHandler()
+
+func setRecoveryState()
+
+func clearRecoveryState() {
+	state.recoveryFrameBaseOffset = 0
+	state.gPtr = nil
+}
 
 // Dereference can be used to read the memory at an address into the
 // provided address. The dst ptr must be of sufficient length.
