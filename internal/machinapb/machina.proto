@@ -45,6 +45,46 @@ message SnapshotRequest {
   }
 }
 
+message EventsRequest {
+  message Setup {
+    // The key associated with the artifacts needed for this snapshot.
+    string key = 1;
+
+    // The fingerprint of the process to snapshot.
+    string process_fingerprint = 2;
+  }
+
+  message Stream {
+    // The number of events to stream.
+    uint32 max_count = 1;
+  }
+
+  message Finish {}
+
+  oneof request {
+    Setup setup = 1;
+    Stream stream = 2;
+    Finish finish = 3;
+  }
+}
+
+message EventsResponse {
+  message Event { bytes data = 1; }
+
+  // ApproximateBootTime is sent after the probes have been loaded.
+  // It is needed because bpf only has access to CLOCK_MONOTONIC time
+  // (at least until version 6.1 when bpf_ktime_get_tai_ns was introduced).
+  // This value is used to adjust the timestamp in the event to a wall clock
+  // timestamp. It will be approximate, but should be close enough.
+  message ApproximateBootTime { uint64 approximate_boot_time_ns = 1; }
+
+  // TODO: Add a trailing message with statistics about the events.
+  oneof response {
+    Event event = 1;
+    ApproximateBootTime approximate_boot_time = 2;
+  }
+}
+
 message SnapshotResponse {
   bytes data = 1;
 
@@ -107,6 +147,28 @@ service Machina {
   //
   // The protocol may be extended in the future to allow for multiple snapshots.
   rpc Snapshot(stream SnapshotRequest) returns (stream SnapshotResponse) {}
+
+  // Events sets up and performs a streaming events probe.
+  // The protocol is designed to allow for many events streams to commence
+  // around the same time across many processes and machinas. In order to make
+  // this possible, the protocol has three phases of execution: Setup, Stream,
+  // and Finish.
+  //
+  // Setup: The client sends a Setup message to the server. The server does not
+  // respond with headers until it has finished setting up the events stream.
+  // Any additional messages sent by the client at this point may result in an
+  // error until the headers have been received by the client. At this point,
+  // the server may download the needed events artifacts if it does not already
+  // have them using the key in the setup request.
+  //
+  // Stream: Once the headers have been received by the client, the client shall
+  // attach the probes and begin streaming events, up to the max_count specified
+  // in the Stream message. The server will respond with a Finish message when
+  // the client should stop streaming events.
+  //
+  // Finish: The client should stop streaming events and send a summary of the
+  // events that were streamed.
+  rpc Events(stream EventsRequest) returns (stream EventsResponse) {}
 
   // GetMetadata returns metadata about the machina.
   //

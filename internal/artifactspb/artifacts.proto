@@ -10,7 +10,7 @@ message GetArtifactRequest {
     BPF = 1;
     METADATA = 2;
     BPF_SOURCE = 3;
-    SNAPSHOT_SPEC = 5;
+    SPEC = 5;
     SNAPSHOT_PROGRAM = 6;
 
     reserved 4;

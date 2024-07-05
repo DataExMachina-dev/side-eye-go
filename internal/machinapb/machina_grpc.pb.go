@@ -42,6 +42,27 @@ type MachinaClient interface {
 	//
 	// The protocol may be extended in the future to allow for multiple snapshots.
 	Snapshot(ctx context.Context, opts ...grpc.CallOption) (Machina_SnapshotClient, error)
+	// Events sets up and performs a streaming events probe.
+	// The protocol is designed to allow for many events streams to commence
+	// around the same time across many processes and machinas. In order to make
+	// this possible, the protocol has three phases of execution: Setup, Stream,
+	// and Finish.
+	//
+	// Setup: The client sends a Setup message to the server. The server does not
+	// respond with headers until it has finished setting up the events stream.
+	// Any additional messages sent by the client at this point may result in an
+	// error until the headers have been received by the client. At this point,
+	// the server may download the needed events artifacts if it does not already
+	// have them using the key in the setup request.
+	//
+	// Stream: Once the headers have been received by the client, the client shall
+	// attach the probes and begin streaming events, up to the max_count specified
+	// in the Stream message. The server will respond with a Finish message when
+	// the client should stop streaming events.
+	//
+	// Finish: The client should stop streaming events and send a summary of the
+	// events that were streamed.
+	Events(ctx context.Context, opts ...grpc.CallOption) (Machina_EventsClient, error)
 	// GetMetadata returns metadata about the machina.
 	//
 	// The response is streaming so that ex can detect disconnections from
@@ -152,8 +173,39 @@ func (x *machinaSnapshotClient) Recv() (*SnapshotResponse, error) {
 	return m, nil
 }
 
+func (c *machinaClient) Events(ctx context.Context, opts ...grpc.CallOption) (Machina_EventsClient, error) {
+	stream, err := c.cc.NewStream(ctx, &Machina_ServiceDesc.Streams[3], "/machina.Machina/Events", opts...)
+	if err != nil {
+		return nil, err
+	}
+	x := &machinaEventsClient{stream}
+	return x, nil
+}
+
+type Machina_EventsClient interface {
+	Send(*EventsRequest) error
+	Recv() (*EventsResponse, error)
+	grpc.ClientStream
+}
+
+type machinaEventsClient struct {
+	grpc.ClientStream
+}
+
+func (x *machinaEventsClient) Send(m *EventsRequest) error {
+	return x.ClientStream.SendMsg(m)
+}
+
+func (x *machinaEventsClient) Recv() (*EventsResponse, error) {
+	m := new(EventsResponse)
+	if err := x.ClientStream.RecvMsg(m); err != nil {
+		return nil, err
+	}
+	return m, nil
+}
+
 func (c *machinaClient) MachinaInfo(ctx context.Context, in *MachinaInfoRequest, opts ...grpc.CallOption) (Machina_MachinaInfoClient, error) {
-	stream, err := c.cc.NewStream(ctx, &Machina_ServiceDesc.Streams[3], "/machina.Machina/MachinaInfo", opts...)
+	stream, err := c.cc.NewStream(ctx, &Machina_ServiceDesc.Streams[4], "/machina.Machina/MachinaInfo", opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -211,6 +263,27 @@ type MachinaServer interface {
 	//
 	// The protocol may be extended in the future to allow for multiple snapshots.
 	Snapshot(Machina_SnapshotServer) error
+	// Events sets up and performs a streaming events probe.
+	// The protocol is designed to allow for many events streams to commence
+	// around the same time across many processes and machinas. In order to make
+	// this possible, the protocol has three phases of execution: Setup, Stream,
+	// and Finish.
+	//
+	// Setup: The client sends a Setup message to the server. The server does not
+	// respond with headers until it has finished setting up the events stream.
+	// Any additional messages sent by the client at this point may result in an
+	// error until the headers have been received by the client. At this point,
+	// the server may download the needed events artifacts if it does not already
+	// have them using the key in the setup request.
+	//
+	// Stream: Once the headers have been received by the client, the client shall
+	// attach the probes and begin streaming events, up to the max_count specified
+	// in the Stream message. The server will respond with a Finish message when
+	// the client should stop streaming events.
+	//
+	// Finish: The client should stop streaming events and send a summary of the
+	// events that were streamed.
+	Events(Machina_EventsServer) error
 	// GetMetadata returns metadata about the machina.
 	//
 	// The response is streaming so that ex can detect disconnections from
@@ -231,6 +304,9 @@ func (UnimplementedMachinaServer) GetExecutable(*GetExecutableRequest, Machina_G
 }
 func (UnimplementedMachinaServer) Snapshot(Machina_SnapshotServer) error {
 	return status.Errorf(codes.Unimplemented, "method Snapshot not implemented")
+}
+func (UnimplementedMachinaServer) Events(Machina_EventsServer) error {
+	return status.Errorf(codes.Unimplemented, "method Events not implemented")
 }
 func (UnimplementedMachinaServer) MachinaInfo(*MachinaInfoRequest, Machina_MachinaInfoServer) error {
 	return status.Errorf(codes.Unimplemented, "method MachinaInfo not implemented")
@@ -316,6 +392,32 @@ func (x *machinaSnapshotServer) Recv() (*SnapshotRequest, error) {
 	return m, nil
 }
 
+func _Machina_Events_Handler(srv interface{}, stream grpc.ServerStream) error {
+	return srv.(MachinaServer).Events(&machinaEventsServer{stream})
+}
+
+type Machina_EventsServer interface {
+	Send(*EventsResponse) error
+	Recv() (*EventsRequest, error)
+	grpc.ServerStream
+}
+
+type machinaEventsServer struct {
+	grpc.ServerStream
+}
+
+func (x *machinaEventsServer) Send(m *EventsResponse) error {
+	return x.ServerStream.SendMsg(m)
+}
+
+func (x *machinaEventsServer) Recv() (*EventsRequest, error) {
+	m := new(EventsRequest)
+	if err := x.ServerStream.RecvMsg(m); err != nil {
+		return nil, err
+	}
+	return m, nil
+}
+
 func _Machina_MachinaInfo_Handler(srv interface{}, stream grpc.ServerStream) error {
 	m := new(MachinaInfoRequest)
 	if err := stream.RecvMsg(m); err != nil {
@@ -358,6 +460,12 @@ var Machina_ServiceDesc = grpc.ServiceDesc{
 		{
 			StreamName:    "Snapshot",
 			Handler:       _Machina_Snapshot_Handler,
+			ServerStreams: true,
+			ClientStreams: true,
+		},
+		{
+			StreamName:    "Events",
+			Handler:       _Machina_Events_Handler,
 			ServerStreams: true,
 			ClientStreams: true,
 		},

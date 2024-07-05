@@ -34,7 +34,9 @@ message RuntimeConfig {
   // Offset in runtime.moduledata of the text field.
   uint32 moduledata_text_offset = 14;
 
+  // The start pc of the stoptheworld.Dereference function.
   uint64 dereference_start_pc = 12;
+  // The end pc of the stoptheworld.Dereference function.
   uint64 dereference_end_pc = 13;
 
   reserved 15;

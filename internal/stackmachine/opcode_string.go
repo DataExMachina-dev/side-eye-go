@@ -31,11 +31,12 @@ func _() {
 	_ = x[OpCodeCopyFromRegister-20]
 	_ = x[OpCodeZeroFill-21]
 	_ = x[OpCodePrepareFrameData-22]
+	_ = x[OpCodeIllegal-23]
 }
 
-const _OpCode_name = "OpCodeInvalidOpCodeCallOpCodeCondJumpOpCodeDecrementOpCodeEnqueueEmptyInterfaceOpCodeEnqueueInterfaceOpCodeEnqueuePointerOpCodeEnqueueSliceHeaderOpCodeEnqueueStringHeaderOpCodeEnqueueMapHeaderOpCodeJumpOpCodePopOpCodePushImmOpCodePushOffsetOpCodePushSliceLenOpCodeReturnOpCodeSetOffsetOpCodeShiftOffsetOpCodeEnqueueBiasedPointerOpCodeDereferenceCFAOffsetOpCodeCopyFromRegisterOpCodeZeroFillOpCodePrepareFrameData"
+const _OpCode_name = "OpCodeInvalidOpCodeCallOpCodeCondJumpOpCodeDecrementOpCodeEnqueueEmptyInterfaceOpCodeEnqueueInterfaceOpCodeEnqueuePointerOpCodeEnqueueSliceHeaderOpCodeEnqueueStringHeaderOpCodeEnqueueMapHeaderOpCodeJumpOpCodePopOpCodePushImmOpCodePushOffsetOpCodePushSliceLenOpCodeReturnOpCodeSetOffsetOpCodeShiftOffsetOpCodeEnqueueBiasedPointerOpCodeDereferenceCFAOffsetOpCodeCopyFromRegisterOpCodeZeroFillOpCodePrepareFrameDataOpCodeIllegal"
 
-var _OpCode_index = [...]uint16{0, 13, 23, 37, 52, 79, 101, 121, 145, 170, 192, 202, 211, 224, 240, 258, 270, 285, 302, 328, 354, 376, 390, 412}
+var _OpCode_index = [...]uint16{0, 13, 23, 37, 52, 79, 101, 121, 145, 170, 192, 202, 211, 224, 240, 258, 270, 285, 302, 328, 354, 376, 390, 412, 425}
 
 func (i OpCode) String() string {
 	if i >= OpCode(len(_OpCode_index)-1) {

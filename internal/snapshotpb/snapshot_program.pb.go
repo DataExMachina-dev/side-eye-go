@@ -53,8 +53,10 @@ type RuntimeConfig struct {
 	ModuledataEtypesOffset uint32 `protobuf:"varint,11,opt,name=moduledata_etypes_offset,json=moduledataEtypesOffset,proto3" json:"moduledata_etypes_offset,omitempty"`
 	// Offset in runtime.moduledata of the text field.
 	ModuledataTextOffset uint32 `protobuf:"varint,14,opt,name=moduledata_text_offset,json=moduledataTextOffset,proto3" json:"moduledata_text_offset,omitempty"`
-	DereferenceStartPc   uint64 `protobuf:"varint,12,opt,name=dereference_start_pc,json=dereferenceStartPc,proto3" json:"dereference_start_pc,omitempty"`
-	DereferenceEndPc     uint64 `protobuf:"varint,13,opt,name=dereference_end_pc,json=dereferenceEndPc,proto3" json:"dereference_end_pc,omitempty"`
+	// The start pc of the stoptheworld.Dereference function.
+	DereferenceStartPc uint64 `protobuf:"varint,12,opt,name=dereference_start_pc,json=dereferenceStartPc,proto3" json:"dereference_start_pc,omitempty"`
+	// The end pc of the stoptheworld.Dereference function.
+	DereferenceEndPc uint64 `protobuf:"varint,13,opt,name=dereference_end_pc,json=dereferenceEndPc,proto3" json:"dereference_end_pc,omitempty"`
 }
 
 func (x *RuntimeConfig) Reset() {
