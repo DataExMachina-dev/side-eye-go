@@ -26,6 +26,10 @@ type SideEyeClient struct {
 	opts   sideEyeClientOpts
 }
 
+const (
+	ENV_TENANT_TOKEN = "SIDE_EYE_TOKEN"
+)
+
 // NewSideEyeClient creates a new SideEyeClient. WithApiToken or
 // WithApiTokenFromEnv need to specified as an option to authenticate with the
 // Side-Eye service.
@@ -34,7 +38,7 @@ type SideEyeClient struct {
 // release resources.
 func NewSideEyeClient(option ...SideEyeClientOption) (*SideEyeClient, error) {
 	sideEyeURL := "https://api.side-eye.io"
-	if url, ok := os.LookupEnv("SIDEEYE_URL"); ok {
+	if url, ok := os.LookupEnv("SIDE_EYE_URL"); ok {
 		sideEyeURL = url
 	}
 	// Turn the URL into a gRPC address.
@@ -102,7 +106,7 @@ func (t WithApiToken) apply(opts *sideEyeClientOpts) error {
 
 // WithApiTokenFromEnv is an option for NewSideEyeClient that specifies that the
 // API token to use for authentication to the Side-Eye service should be read
-// from the SIDEEYE_TOKEN environment variable. If that variable is not set,
+// from the SIDE_EYE_TOKEN environment variable. If that variable is not set,
 // NewSideEyeClient will return an error.
 type WithApiTokenFromEnv struct{}
 
@@ -110,7 +114,7 @@ var _ SideEyeClientOption = WithApiTokenFromEnv{}
 
 // apply implements the SideEyeClientOption interface.
 func (w WithApiTokenFromEnv) apply(opts *sideEyeClientOpts) error {
-	tok, ok := os.LookupEnv("SIDEEYE_TOKEN")
+	tok, ok := os.LookupEnv(ENV_TENANT_TOKEN)
 	if !ok {
 		return fmt.Errorf("SIDEEYE_API_TOKEN environment variable required by WithApiTokenFromEnv is not set")
 	}
