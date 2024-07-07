@@ -10,32 +10,58 @@ import (
 	"time"
 )
 
-// Listener implements net.Listener and dials connections to an
-// outbound address.
+// Listener implements net.Listener and dials connections to a remote address.
+// Listener is a surprising guy -- it doesn't actually "listen" for any sort of
+// incoming connections. Instead, it dials a single connection to a remote
+// address. When that connection is established, it sends a handshake packet
+// (informing the remote server that it should use it as a gRPC client conn) and
+// then it returns the connection from the Accept(). When the connection drops,
+// it dials a new one (so, there's ever at most one connection active).
 type Listener struct {
 	addr     serverDialAddr
 	dialChan <-chan net.Conn
 
-	dialingCtx    context.Context
+	dialingCtx context.Context
+	// cancelDialing is used by Close() to signal the run() goroutine to
+	// terminate.
 	cancelDialing context.CancelFunc
-	done          <-chan struct{}
+	// The done channel is used by Close() to synchronize with the run()
+	// goroutine.
+	done <-chan struct{}
+
+	mu struct {
+		sync.Mutex
+		status ConnectionStatus
+	}
 }
 
-// NewServerDialListener creates a ServerDialListener that dials the given
-// address. Note that the address should be a valid URL with either http or
-// https scheme and no path or query.
+type ConnectionStatus int
+
+// NOTE: Keep enum in sync with sideeye.ConnectionStatus.
+const (
+	UnknownStatus ConnectionStatus = iota
+	Connected
+	Disconnected
+	Connecting
+)
+
+// NewListener creates a Listener that dials the given address. Note that the
+// address should be a valid URL with either http or https scheme and no path or
+// query.
+//
+// errLogger can be nil.
 func NewListener(
 	addr string,
-	onDialError func(error),
-) (net.Listener, error) {
+	errLogger func(error),
+) (*Listener, error) {
 	dialChan := make(chan net.Conn)
 	done := make(chan struct{})
 	d, sdAddr, err := newDialer(addr)
 	if err != nil {
 		return nil, err
 	}
-	if onDialError == nil {
-		onDialError = func(error) {}
+	if errLogger == nil {
+		errLogger = func(error) {}
 	}
 	ctx, cancel := context.WithCancel(context.Background())
 	sd := &Listener{
@@ -45,19 +71,35 @@ func NewListener(
 		done:          done,
 		dialChan:      dialChan,
 	}
-	go run(ctx, sdAddr, d, dialChan, onDialError, done)
-	return &headerDialer{Listener: sd}, err
+	go func() {
+		defer close(done)
+		defer sd.setConnectionStatus(Disconnected)
+		sd.run(ctx, sdAddr, d, dialChan, errLogger)
+	}()
+	return sd, err
 }
 
-func run(
+// ConnectionStatus returns the connection's current state.
+func (l *Listener) ConnectionStatus() ConnectionStatus {
+	l.mu.Lock()
+	defer l.mu.Unlock()
+	return l.mu.status
+}
+
+func (l *Listener) setConnectionStatus(status ConnectionStatus) {
+	l.mu.Lock()
+	defer l.mu.Unlock()
+	l.mu.status = status
+}
+
+func (l *Listener) run(
 	ctx context.Context,
 	addr serverDialAddr,
 	d dialer,
 	dialChan chan<- net.Conn,
-	onDialError func(error),
-	done chan<- struct{},
+	errLogger func(error),
 ) {
-	defer close(done)
+	l.setConnectionStatus(Connecting)
 	// TODO: Exponential backoff or something like that.
 	const dialInterval = 2 * time.Second
 	var lastDial time.Time
@@ -72,9 +114,10 @@ func run(
 		lastDial = time.Now()
 		conn, err := d.DialContext(ctx, "tcp", addr.addr)
 		if err != nil {
-			onDialError(fmt.Errorf("failed to dial %s: %w", addr.addr, err))
+			errLogger(fmt.Errorf("failed to dial %s: %w", addr.addr, err))
 			continue
 		}
+		l.setConnectionStatus(Connected)
 		onClose := make(chan struct{})
 		dialChan <- &wrappedConn{
 			c:       conn,
@@ -85,15 +128,22 @@ func run(
 			return
 		case <-onClose:
 		}
+		l.setConnectionStatus(Connecting)
 	}
 }
 
+// wrappedConn wraps a net.Conn
 type wrappedConn struct {
-	c         net.Conn
+	// The underlying connection.
+	c net.Conn
+
 	closeOnce sync.Once
-	onClose   chan<- struct{}
-	closeErr  error
+	// onClose is closed when the connection's Close() method is called.
+	onClose  chan<- struct{}
+	closeErr error
 }
+
+var _ net.Conn = (*wrappedConn)(nil)
 
 // LocalAddr implements net.Conn.
 func (w *wrappedConn) LocalAddr() net.Addr {
@@ -130,6 +180,9 @@ func (w *wrappedConn) Write(b []byte) (n int, err error) {
 	return w.c.Write(b)
 }
 
+// Close implements net.Conn.
+//
+// We're relying on gPRC to call Close() if the wrapped connection drops.
 func (w *wrappedConn) Close() error {
 	w.closeOnce.Do(func() {
 		w.closeErr = w.c.Close()
@@ -138,21 +191,19 @@ func (w *wrappedConn) Close() error {
 	return w.closeErr
 }
 
-var _ net.Conn = (*wrappedConn)(nil)
-
 // Accept implements net.Listener.
-func (s *Listener) Accept() (net.Conn, error) {
+func (l *Listener) Accept() (net.Conn, error) {
 	select {
-	case <-s.dialingCtx.Done():
-		return nil, s.dialingCtx.Err()
-	case conn := <-s.dialChan:
+	case <-l.dialingCtx.Done():
+		return nil, l.dialingCtx.Err()
+	case conn := <-l.dialChan:
 		return conn, nil
 	}
 }
 
 // Addr implements net.Listener.
-func (s *Listener) Addr() net.Addr {
-	return &s.addr
+func (l *Listener) Addr() net.Addr {
+	return &l.addr
 }
 
 type serverDialAddr struct {
@@ -160,10 +211,17 @@ type serverDialAddr struct {
 	addr   string
 }
 
+// dialer abstracts over net.Dialer vs https.Dialer.
 type dialer interface {
 	DialContext(ctx context.Context, network, address string) (net.Conn, error)
 }
 
+// newDialer returns a dialer that:
+// a) abstracts over http versus https, and
+// b) sends the magic header on every dialed connection that identifies the
+// connection as being a "server-dialed" one -- i.e. the party dialing the
+// connection will serve a gRPC server on the connection, so the target of the
+// connection actually acts as the client from gRPC's perspective.
 func newDialer(addr string) (dialer, serverDialAddr, error) {
 	u, err := url.Parse(addr)
 	if err != nil {
@@ -184,7 +242,9 @@ func newDialer(addr string) (dialer, serverDialAddr, error) {
 	default:
 		return nil, serverDialAddr{}, fmt.Errorf("unsupported scheme: %s", u.Scheme)
 	}
-	return d, serverDialAddr{
+	// Whenever we
+	dialer := &headerDialer{d: d}
+	return dialer, serverDialAddr{
 		scheme: u.Scheme,
 		addr:   u.Host,
 	}, nil
@@ -201,9 +261,9 @@ func (s *serverDialAddr) String() string {
 }
 
 // Close implements net.Listener.
-func (s *Listener) Close() error {
-	s.cancelDialing()
-	<-s.done
+func (l *Listener) Close() error {
+	l.cancelDialing()
+	<-l.done
 	return nil
 }
 

@@ -1,21 +1,19 @@
 package serverdial
 
 import (
+	"context"
 	"fmt"
 	"net"
 )
 
 type headerDialer struct {
-	net.Listener
+	d dialer
 }
 
-// / The header byte for inbound server connections.
-// /
-// / Note that this choice is arbitrary.
-var inboundServerPrefix = string([]byte{1, 1, 1, 9, 1, 1, 1, 0})
+var _ dialer = &headerDialer{}
 
-func (d *headerDialer) Accept() (net.Conn, error) {
-	conn, err := d.Listener.Accept()
+func (d *headerDialer) DialContext(ctx context.Context, network, address string) (net.Conn, error) {
+	conn, err := d.d.DialContext(ctx, network, address)
 	if err != nil {
 		return nil, err
 	}
@@ -25,6 +23,11 @@ func (d *headerDialer) Accept() (net.Conn, error) {
 	}
 	return conn, nil
 }
+
+// / The header byte for inbound server connections.
+// /
+// / Note that this choice is arbitrary.
+var inboundServerPrefix = string([]byte{1, 1, 1, 9, 1, 1, 1, 0})
 
 func writeHeader(conn net.Conn) error {
 	toWrite := []byte(inboundServerPrefix)
