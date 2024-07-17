@@ -2,15 +2,11 @@ package server
 
 import (
 	"bufio"
-	"context"
 	"encoding/hex"
 	"errors"
 	"fmt"
 	"io"
 	"os"
-	"path"
-	"regexp"
-	"strconv"
 	"sync"
 
 	"github.com/DataExMachina-dev/side-eye-go/internal/chunkpb"
@@ -26,11 +22,15 @@ import (
 
 // Server implements the machinapb.MachinaServer interface.
 type Server struct {
-	fingerprint uuid.UUID
-	tenantToken string
-	environment string
+	// The ID that this library identifies as to the Side-Eye service.
+	agentFingerprint uuid.UUID
+	tenantToken      string
+	environment      string
+	// The name of the program to be reported for the current process.
+	programName string
 	fetcher     SnapshotFetcher
-	hash        binaryHashOnce
+
+	hash binaryHashOnce
 
 	machinapb.UnimplementedMachinaServer
 }
@@ -48,13 +48,15 @@ func NewServer(
 	fingerprint uuid.UUID,
 	tenantToken string,
 	environment string,
+	programName string,
 	fetcher SnapshotFetcher,
 ) *Server {
 	return &Server{
-		fingerprint: fingerprint,
-		tenantToken: tenantToken,
-		environment: environment,
-		fetcher:     fetcher,
+		agentFingerprint: fingerprint,
+		tenantToken:      tenantToken,
+		environment:      environment,
+		programName:      programName,
+		fetcher:          fetcher,
 	}
 }
 
@@ -94,7 +96,7 @@ func (s *Server) MachinaInfo(req *machinapb.MachinaInfoRequest, stream machinapb
 	// TODO: Populate the rest of the fields.For version, perhaps
 	// runtime.debug.ReadBuildInfo() is the ticket.
 	if err := stream.Send(&machinapb.MachinaInfoResponse{
-		Fingerprint: s.fingerprint.String(),
+		Fingerprint: s.agentFingerprint.String(),
 		Hostname:    "",
 		Version:     "",
 		TenantToken: s.tenantToken,
@@ -144,7 +146,11 @@ func (s *Server) Snapshot(stream machinapb.Machina_SnapshotServer) (err error) {
 }
 
 // WatchProcesses implements machinapb.MachinaServer.
-func (s *Server) WatchProcesses(r *machinapb.WatchProcessesRequest, watchServer machinapb.Machina_WatchProcessesServer) error {
+//
+// The request proto is ignored. The current process is reported
+// unconditionally, with the configured program name. Other processes are not
+// reported.
+func (s *Server) WatchProcesses(req *machinapb.WatchProcessesRequest, watchServer machinapb.Machina_WatchProcessesServer) error {
 	ctx := watchServer.Context()
 	hash, err := s.getBinaryHash()
 	if err != nil {
@@ -156,7 +162,7 @@ func (s *Server) WatchProcesses(r *machinapb.WatchProcessesRequest, watchServer 
 	}
 	fingerprint := fmt.Sprintf(
 		"%s:%d:%d.%d",
-		s.fingerprint.String(),
+		s.agentFingerprint.String(),
 		os.Getpid(),
 		ti.Unix(),
 		ti.UnixNano()-ti.Unix()*1_000_000_000,
@@ -175,9 +181,9 @@ func (s *Server) WatchProcesses(r *machinapb.WatchProcessesRequest, watchServer 
 		BinaryHash:  hash,
 		Fingerprint: fingerprint,
 		Environment: s.environment,
+		Program:     s.programName,
 		Labels:      []*machinapb.LabelValue{},
 	}
-	classify(ctx, process, r.LabelRules)
 
 	if err := watchServer.Send(&machinapb.Update{
 		Added: []*machinapb.Process{process},
@@ -186,85 +192,6 @@ func (s *Server) WatchProcesses(r *machinapb.WatchProcessesRequest, watchServer 
 	}
 	<-ctx.Done()
 	return ctx.Err()
-}
-
-func classify(ctx context.Context, p *machinapb.Process, rules []*machinapb.LabelRule) {
-	matchRegexp := func(pat string, input string) bool {
-		matched, err := regexp.MatchString(pat, input)
-		return matched && err == nil
-	}
-	matchAnyRegexp := func(pats string, inputs []string) bool {
-		re, err := regexp.Compile(pats)
-		if err != nil {
-			return false
-		}
-		for _, input := range inputs {
-			if re.MatchString(input) {
-				return true
-			}
-		}
-		return false
-	}
-
-outer:
-	for _, r := range rules {
-		for _, c := range r.PredicatesConjunction {
-			l, ok := machinapb.StandardLabels_value[c.Label]
-			if !ok {
-				continue outer
-			}
-			var matched bool
-			switch machinapb.StandardLabels(l) {
-
-			case machinapb.StandardLabels_executable_path:
-				matched = matchRegexp(c.ValueRegex, p.ExePath)
-
-				// The last element of executable_path.
-			case machinapb.StandardLabels_executable_name:
-				binaryName := path.Base(p.ExePath)
-				matched = matchRegexp(c.ValueRegex, binaryName)
-
-				// A filter on the command line passes if any of the individual arguments
-				// match the regex.
-			case machinapb.StandardLabels_command_line:
-				matched = matchAnyRegexp(c.ValueRegex, p.Cmd)
-
-				// A filter on the environment passes if any of the environment variable
-				// key-values match the regex.
-			case machinapb.StandardLabels_environment_variables:
-				matched = matchAnyRegexp(c.ValueRegex, p.Env)
-
-			case machinapb.StandardLabels_hostname:
-				// TODO: add hostname filter
-
-			case machinapb.StandardLabels_pid:
-				matched = matchRegexp(c.ValueRegex, strconv.Itoa(int(p.Pid)))
-
-			case machinapb.StandardLabels_program:
-				matched = matchRegexp(c.ValueRegex, p.Program)
-
-				// environment is a label that an agent can be configured to apply to the
-				// processes it discovers.
-			case machinapb.StandardLabels_environment:
-				matched = matchRegexp(c.ValueRegex, p.Environment)
-
-			default:
-			}
-			if !matched {
-				continue outer
-			}
-		}
-
-		outputLabel, ok := machinapb.StandardLabels_value[r.Label]
-		if !ok {
-			continue
-		}
-		switch machinapb.StandardLabels(outputLabel) {
-		case machinapb.StandardLabels_program:
-			p.Program = r.Value
-		default:
-		}
-	}
 }
 
 func (s *Server) getBinaryHash() (string, error) {

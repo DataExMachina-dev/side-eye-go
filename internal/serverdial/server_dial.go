@@ -35,6 +35,8 @@ type Listener struct {
 	}
 }
 
+var _ net.Listener = (*Listener)(nil)
+
 type ConnectionStatus int
 
 // NOTE: Keep enum in sync with sideeye.ConnectionStatus.
@@ -48,6 +50,9 @@ const (
 // NewListener creates a Listener that dials the given address. Note that the
 // address should be a valid URL with either http or https scheme and no path or
 // query.
+//
+// A goroutine is started which dials the target asynchronously. When a
+// connection drops, a new one is dialed.
 //
 // errLogger can be nil.
 func NewListener(
@@ -266,5 +271,3 @@ func (l *Listener) Close() error {
 	<-l.done
 	return nil
 }
-
-var _ net.Listener = (*Listener)(nil)

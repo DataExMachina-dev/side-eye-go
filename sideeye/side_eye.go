@@ -29,6 +29,7 @@ type config struct {
 	tenantToken string
 	apiUrl      string
 	environment string
+	programName string
 	errorLogger func(err error)
 }
 
@@ -40,8 +41,9 @@ const (
 	ENV_ENVIRONMENT  = "SIDE_EYE_ENVIRONMENT"
 )
 
-func makeDefaultConfig() config {
+func makeDefaultConfig(programName string) config {
 	cfg := config{
+		programName: programName,
 		apiUrl:      defaultApiUrl,
 		errorLogger: func(err error) {},
 	}
@@ -85,6 +87,12 @@ func WithEnvironment(env string) Option {
 	})
 }
 
+func WithProgramName(programName string) Option {
+	return optionFunc(func(cfg *config) {
+		cfg.programName = programName
+	})
+}
+
 // WithErrorLogger sets a function to be called with errors (for example for
 // logging them).
 func WithErrorLogger(f func(err error)) Option {
@@ -97,11 +105,15 @@ func WithErrorLogger(f func(err error)) Option {
 // Side-Eye cloud service and this process is registered to be monitored -- i.e.
 // this process shows up on app.side-eye.io and can be selected to be included
 // in snapshots or event traces.
+//
+// programName is the name of the program that this process will be identified
+// as on app.side-eye.io.
 func Init(
 	ctx context.Context,
+	programName string,
 	opts ...Option,
 ) error {
-	if err := singletonConn.Connect(ctx, opts...); err != nil {
+	if err := singletonConn.Connect(ctx, programName, opts...); err != nil {
 		return fmt.Errorf("failed to connect to Side-Eye: %w", err)
 	}
 	return nil
@@ -144,14 +156,18 @@ func newSideEyeConn() *sideEyeConn {
 
 // Connect connects to the Side-Eye cloud service and registers this process to
 // be monitored. A goroutine is started to handle incoming RPCs.
+//
+// programName is the name of the program that this process will correspond to
+// on app.side-eye.io.
 func (c *sideEyeConn) Connect(
 	ctx context.Context,
+	programName string,
 	opts ...Option,
 ) error {
 	// If we were already connected, terminate that connection.
 	c.Close()
 
-	cfg := makeDefaultConfig()
+	cfg := makeDefaultConfig(programName)
 	for _, opt := range opts {
 		opt.apply(&cfg)
 	}
@@ -160,7 +176,7 @@ func (c *sideEyeConn) Connect(
 		return fmt.Errorf("missing token")
 	}
 
-	fingerprint, err := uuid.NewRandom()
+	agentFingerprint, err := uuid.NewRandom()
 	if err != nil {
 		return fmt.Errorf("failed to generate fingerprint: %w", err)
 	}
@@ -176,7 +192,7 @@ func (c *sideEyeConn) Connect(
 		return fmt.Errorf("failed to create artifacts client: %w", err)
 	}
 	fetcher := server.NewSnapshotFetcher(client)
-	server := server.NewServer(fingerprint, cfg.tenantToken, cfg.environment, fetcher)
+	server := server.NewServer(agentFingerprint, cfg.tenantToken, cfg.environment, cfg.programName, fetcher)
 	machinapb.RegisterMachinaServer(s, server)
 	c.activeConfig = cfg
 	c.server = server
@@ -242,6 +258,8 @@ type ConnectionStatus int
 
 const (
 	UnknownStatus ConnectionStatus = iota
+	// Uninitialized means Connect() was never called, or Close() was called.
+	Uninitialized
 	Connected
 	Disconnected
 	Connecting
@@ -250,7 +268,7 @@ const (
 func (c *sideEyeConn) Status() ConnectionStatus {
 	l := c.listener()
 	if l == nil {
-		return Disconnected
+		return Uninitialized
 	}
 	switch s := l.ConnectionStatus(); s {
 	case serverdial.UnknownStatus:
