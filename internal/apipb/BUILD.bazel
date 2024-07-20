@@ -1,0 +1,19 @@
+load("@rules_go//go:def.bzl", "go_library")
+
+go_library(
+    name = "apipb",
+    srcs = [
+        "api.pb.go",
+        "api_grpc.pb.go",
+        "apipb.go",
+    ],
+    importpath = "github.com/DataExMachina-dev/side-eye-go/internal/apipb",
+    visibility = ["//side-eye-go:__subpackages__"],
+    deps = [
+        "@org_golang_google_grpc//:grpc",
+        "@org_golang_google_grpc//codes",
+        "@org_golang_google_grpc//status",
+        "@org_golang_google_protobuf//reflect/protoreflect",
+        "@org_golang_google_protobuf//runtime/protoimpl",
+    ],
+)

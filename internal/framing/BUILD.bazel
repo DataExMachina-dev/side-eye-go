@@ -1,0 +1,8 @@
+load("@rules_go//go:def.bzl", "go_library")
+
+go_library(
+    name = "framing",
+    srcs = ["framing.go"],
+    importpath = "github.com/DataExMachina-dev/side-eye-go/internal/framing",
+    visibility = ["//side-eye-go:__subpackages__"],
+)

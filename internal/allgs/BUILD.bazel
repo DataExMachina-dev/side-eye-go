@@ -1,0 +1,12 @@
+load("@rules_go//go:def.bzl", "go_library")
+
+go_library(
+    name = "allgs",
+    srcs = [
+        "go_1_22.go",
+        "traceback.go",
+    ],
+    importpath = "github.com/DataExMachina-dev/side-eye-go/internal/allgs",
+    visibility = ["//side-eye-go:__subpackages__"],
+    deps = ["//side-eye-go/internal/snapshotpb"],
+)

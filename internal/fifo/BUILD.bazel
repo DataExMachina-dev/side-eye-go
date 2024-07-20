@@ -1,0 +1,16 @@
+load("@rules_go//go:def.bzl", "go_library", "go_test")
+
+go_library(
+    name = "fifo",
+    srcs = ["queue.go"],
+    importpath = "github.com/DataExMachina-dev/side-eye-go/internal/fifo",
+    visibility = ["//side-eye-go:__subpackages__"],
+)
+
+go_test(
+    name = "fifo_test",
+    size = "small",
+    srcs = ["queue_test.go"],
+    embed = [":fifo"],
+    deps = ["@com_github_stretchr_testify//require"],
+)

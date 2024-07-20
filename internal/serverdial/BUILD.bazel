@@ -1,0 +1,11 @@
+load("@rules_go//go:def.bzl", "go_library")
+
+go_library(
+    name = "serverdial",
+    srcs = [
+        "header_dialer.go",
+        "server_dial.go",
+    ],
+    importpath = "github.com/DataExMachina-dev/side-eye-go/internal/serverdial",
+    visibility = ["//side-eye-go:__subpackages__"],
+)

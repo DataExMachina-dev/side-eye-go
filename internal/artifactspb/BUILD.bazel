@@ -1,0 +1,20 @@
+load("@rules_go//go:def.bzl", "go_library")
+
+go_library(
+    name = "artifactspb",
+    srcs = [
+        "artifacts.pb.go",
+        "artifacts_grpc.pb.go",
+        "gen.go",
+    ],
+    importpath = "github.com/DataExMachina-dev/side-eye-go/internal/artifactspb",
+    visibility = ["//side-eye-go:__subpackages__"],
+    deps = [
+        "//side-eye-go/internal/chunkpb",
+        "@org_golang_google_grpc//:grpc",
+        "@org_golang_google_grpc//codes",
+        "@org_golang_google_grpc//status",
+        "@org_golang_google_protobuf//reflect/protoreflect",
+        "@org_golang_google_protobuf//runtime/protoimpl",
+    ],
+)
