@@ -78,10 +78,16 @@ message EventsResponse {
   // timestamp. It will be approximate, but should be close enough.
   message ApproximateBootTime { uint64 approximate_boot_time_ns = 1; }
 
+  message Attached { }
+
+  message Detached {}
+
   // TODO: Add a trailing message with statistics about the events.
   oneof response {
     Event event = 1;
     ApproximateBootTime approximate_boot_time = 2;
+    Attached attached = 3;
+    Detached detached = 4;
   }
 }
 
