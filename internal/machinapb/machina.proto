@@ -78,9 +78,14 @@ message EventsResponse {
   // timestamp. It will be approximate, but should be close enough.
   message ApproximateBootTime { uint64 approximate_boot_time_ns = 1; }
 
-  message Attached { }
+  message Attached {}
 
-  message Detached {}
+  message SummaryStatistics {
+    uint32 events_dropped_in_ebpf = 2;
+    uint32 events_dropped_in_userspace = 3;
+  }
+
+  message Detached { SummaryStatistics summary_statistics = 1; }
 
   // TODO: Add a trailing message with statistics about the events.
   oneof response {
