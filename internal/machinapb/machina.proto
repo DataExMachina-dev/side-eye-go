@@ -81,8 +81,9 @@ message EventsResponse {
   message Attached {}
 
   message SummaryStatistics {
+    reserved 1;
     uint32 events_dropped_in_ebpf = 2;
-    uint32 events_dropped_in_userspace = 3;
+    uint32 events_rejected_in_ebpf = 3;
   }
 
   message Detached { SummaryStatistics summary_statistics = 1; }
