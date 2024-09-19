@@ -78,7 +78,10 @@ message EventsResponse {
   // timestamp. It will be approximate, but should be close enough.
   message ApproximateBootTime { uint64 approximate_boot_time_ns = 1; }
 
-  message Attached {}
+  message Attached {
+    // A timestamp that precedes the first event.
+    uint64 attached_timestamp_monotonic_ns = 1;
+  }
 
   message SummaryStatistics {
     reserved 1;
