@@ -178,9 +178,14 @@ func (s *snapshotter) snapshotGoroutine(snapshotHeader *framing.SnapshotHeader, 
 		s.stacks[stackHash] = framesOfInterest
 	}
 
-	// Run the stack machine program to write out the data from the stack
-	// frames and enqueue the pointers.
-	for _, foi := range framesOfInterest {
+	// Run the stack machine program to write out the data from the stack frames
+	// and enqueue the pointers, from leaf to the root (to match order of ebpf
+	// probes).
+	var foi frameOfInterest
+	for len(framesOfInterest) > 0 {
+		framesOfInterest, foi =
+			framesOfInterest[:len(framesOfInterest)-1],
+			framesOfInterest[len(framesOfInterest)-1]
 		if !s.sm.Run(foi.pc, fps[foi.idx], foi.idx, s.out.Len()) {
 			break
 		}
