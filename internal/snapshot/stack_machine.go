@@ -196,6 +196,9 @@ func (s *stackMachine) Run(
 			}
 
 		case OpCodeEnqueueMapHeader:
+			// We enqueue new and old buckets at once, no need to loop (unlike ebpf probe).
+			s.stack[len(s.stack)-1] = 0
+
 			enqueueMapHeader := s.decoder.DecodeEnqueueMapHeader()
 			// https://github.com/golang/go/blob/8d04110c/src/runtime/map.go#L105
 			const sameSizeGrow uint8 = 8
