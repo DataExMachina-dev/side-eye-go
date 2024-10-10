@@ -59,11 +59,3 @@ message SnapshotProgram {
   map<uint32, TypeInfo> type_info = 4;
   bytes prog = 5;
 }
-
-message SnapshotRequest { SnapshotProgram program = 1; }
-
-message SnapshotResponse { bytes output = 1; }
-
-service SnapshotProgramService {
-  rpc Snapshot(SnapshotRequest) returns (SnapshotResponse);
-}

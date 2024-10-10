@@ -385,100 +385,6 @@ func (x *SnapshotProgram) GetProg() []byte {
 	return nil
 }
 
-type SnapshotRequest struct {
-	state         protoimpl.MessageState
-	sizeCache     protoimpl.SizeCache
-	unknownFields protoimpl.UnknownFields
-
-	Program *SnapshotProgram `protobuf:"bytes,1,opt,name=program,proto3" json:"program,omitempty"`
-}
-
-func (x *SnapshotRequest) Reset() {
-	*x = SnapshotRequest{}
-	if protoimpl.UnsafeEnabled {
-		mi := &file_snapshot_program_proto_msgTypes[4]
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		ms.StoreMessageInfo(mi)
-	}
-}
-
-func (x *SnapshotRequest) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*SnapshotRequest) ProtoMessage() {}
-
-func (x *SnapshotRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_snapshot_program_proto_msgTypes[4]
-	if protoimpl.UnsafeEnabled && x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use SnapshotRequest.ProtoReflect.Descriptor instead.
-func (*SnapshotRequest) Descriptor() ([]byte, []int) {
-	return file_snapshot_program_proto_rawDescGZIP(), []int{4}
-}
-
-func (x *SnapshotRequest) GetProgram() *SnapshotProgram {
-	if x != nil {
-		return x.Program
-	}
-	return nil
-}
-
-type SnapshotResponse struct {
-	state         protoimpl.MessageState
-	sizeCache     protoimpl.SizeCache
-	unknownFields protoimpl.UnknownFields
-
-	Output []byte `protobuf:"bytes,1,opt,name=output,proto3" json:"output,omitempty"`
-}
-
-func (x *SnapshotResponse) Reset() {
-	*x = SnapshotResponse{}
-	if protoimpl.UnsafeEnabled {
-		mi := &file_snapshot_program_proto_msgTypes[5]
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		ms.StoreMessageInfo(mi)
-	}
-}
-
-func (x *SnapshotResponse) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*SnapshotResponse) ProtoMessage() {}
-
-func (x *SnapshotResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_snapshot_program_proto_msgTypes[5]
-	if protoimpl.UnsafeEnabled && x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use SnapshotResponse.ProtoReflect.Descriptor instead.
-func (*SnapshotResponse) Descriptor() ([]byte, []int) {
-	return file_snapshot_program_proto_rawDescGZIP(), []int{5}
-}
-
-func (x *SnapshotResponse) GetOutput() []byte {
-	if x != nil {
-		return x.Output
-	}
-	return nil
-}
-
 var File_snapshot_program_proto protoreflect.FileDescriptor
 
 var file_snapshot_program_proto_rawDesc = []byte{
@@ -575,22 +481,7 @@ var file_snapshot_program_proto_rawDesc = []byte{
 	0x79, 0x12, 0x30, 0x0a, 0x05, 0x76, 0x61, 0x6c, 0x75, 0x65, 0x18, 0x02, 0x20, 0x01, 0x28, 0x0b,
 	0x32, 0x1a, 0x2e, 0x73, 0x6e, 0x61, 0x70, 0x73, 0x68, 0x6f, 0x74, 0x5f, 0x70, 0x72, 0x6f, 0x67,
 	0x72, 0x61, 0x6d, 0x2e, 0x54, 0x79, 0x70, 0x65, 0x49, 0x6e, 0x66, 0x6f, 0x52, 0x05, 0x76, 0x61,
-	0x6c, 0x75, 0x65, 0x3a, 0x02, 0x38, 0x01, 0x22, 0x4e, 0x0a, 0x0f, 0x53, 0x6e, 0x61, 0x70, 0x73,
-	0x68, 0x6f, 0x74, 0x52, 0x65, 0x71, 0x75, 0x65, 0x73, 0x74, 0x12, 0x3b, 0x0a, 0x07, 0x70, 0x72,
-	0x6f, 0x67, 0x72, 0x61, 0x6d, 0x18, 0x01, 0x20, 0x01, 0x28, 0x0b, 0x32, 0x21, 0x2e, 0x73, 0x6e,
-	0x61, 0x70, 0x73, 0x68, 0x6f, 0x74, 0x5f, 0x70, 0x72, 0x6f, 0x67, 0x72, 0x61, 0x6d, 0x2e, 0x53,
-	0x6e, 0x61, 0x70, 0x73, 0x68, 0x6f, 0x74, 0x50, 0x72, 0x6f, 0x67, 0x72, 0x61, 0x6d, 0x52, 0x07,
-	0x70, 0x72, 0x6f, 0x67, 0x72, 0x61, 0x6d, 0x22, 0x2a, 0x0a, 0x10, 0x53, 0x6e, 0x61, 0x70, 0x73,
-	0x68, 0x6f, 0x74, 0x52, 0x65, 0x73, 0x70, 0x6f, 0x6e, 0x73, 0x65, 0x12, 0x16, 0x0a, 0x06, 0x6f,
-	0x75, 0x74, 0x70, 0x75, 0x74, 0x18, 0x01, 0x20, 0x01, 0x28, 0x0c, 0x52, 0x06, 0x6f, 0x75, 0x74,
-	0x70, 0x75, 0x74, 0x32, 0x6b, 0x0a, 0x16, 0x53, 0x6e, 0x61, 0x70, 0x73, 0x68, 0x6f, 0x74, 0x50,
-	0x72, 0x6f, 0x67, 0x72, 0x61, 0x6d, 0x53, 0x65, 0x72, 0x76, 0x69, 0x63, 0x65, 0x12, 0x51, 0x0a,
-	0x08, 0x53, 0x6e, 0x61, 0x70, 0x73, 0x68, 0x6f, 0x74, 0x12, 0x21, 0x2e, 0x73, 0x6e, 0x61, 0x70,
-	0x73, 0x68, 0x6f, 0x74, 0x5f, 0x70, 0x72, 0x6f, 0x67, 0x72, 0x61, 0x6d, 0x2e, 0x53, 0x6e, 0x61,
-	0x70, 0x73, 0x68, 0x6f, 0x74, 0x52, 0x65, 0x71, 0x75, 0x65, 0x73, 0x74, 0x1a, 0x22, 0x2e, 0x73,
-	0x6e, 0x61, 0x70, 0x73, 0x68, 0x6f, 0x74, 0x5f, 0x70, 0x72, 0x6f, 0x67, 0x72, 0x61, 0x6d, 0x2e,
-	0x53, 0x6e, 0x61, 0x70, 0x73, 0x68, 0x6f, 0x74, 0x52, 0x65, 0x73, 0x70, 0x6f, 0x6e, 0x73, 0x65,
-	0x62, 0x06, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x33,
+	0x6c, 0x75, 0x65, 0x3a, 0x02, 0x38, 0x01, 0x62, 0x06, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x33,
 }
 
 var (
@@ -605,31 +496,26 @@ func file_snapshot_program_proto_rawDescGZIP() []byte {
 	return file_snapshot_program_proto_rawDescData
 }
 
-var file_snapshot_program_proto_msgTypes = make([]protoimpl.MessageInfo, 8)
+var file_snapshot_program_proto_msgTypes = make([]protoimpl.MessageInfo, 6)
 var file_snapshot_program_proto_goTypes = []interface{}{
-	(*RuntimeConfig)(nil),    // 0: snapshot_program.RuntimeConfig
-	(*PcClassifier)(nil),     // 1: snapshot_program.PcClassifier
-	(*TypeInfo)(nil),         // 2: snapshot_program.TypeInfo
-	(*SnapshotProgram)(nil),  // 3: snapshot_program.SnapshotProgram
-	(*SnapshotRequest)(nil),  // 4: snapshot_program.SnapshotRequest
-	(*SnapshotResponse)(nil), // 5: snapshot_program.SnapshotResponse
-	nil,                      // 6: snapshot_program.SnapshotProgram.GoRuntimeTypeToTypeIdEntry
-	nil,                      // 7: snapshot_program.SnapshotProgram.TypeInfoEntry
+	(*RuntimeConfig)(nil),   // 0: snapshot_program.RuntimeConfig
+	(*PcClassifier)(nil),    // 1: snapshot_program.PcClassifier
+	(*TypeInfo)(nil),        // 2: snapshot_program.TypeInfo
+	(*SnapshotProgram)(nil), // 3: snapshot_program.SnapshotProgram
+	nil,                     // 4: snapshot_program.SnapshotProgram.GoRuntimeTypeToTypeIdEntry
+	nil,                     // 5: snapshot_program.SnapshotProgram.TypeInfoEntry
 }
 var file_snapshot_program_proto_depIdxs = []int32{
 	0, // 0: snapshot_program.SnapshotProgram.runtime_config:type_name -> snapshot_program.RuntimeConfig
 	1, // 1: snapshot_program.SnapshotProgram.pc_classifier:type_name -> snapshot_program.PcClassifier
-	6, // 2: snapshot_program.SnapshotProgram.go_runtime_type_to_type_id:type_name -> snapshot_program.SnapshotProgram.GoRuntimeTypeToTypeIdEntry
-	7, // 3: snapshot_program.SnapshotProgram.type_info:type_name -> snapshot_program.SnapshotProgram.TypeInfoEntry
-	3, // 4: snapshot_program.SnapshotRequest.program:type_name -> snapshot_program.SnapshotProgram
-	2, // 5: snapshot_program.SnapshotProgram.TypeInfoEntry.value:type_name -> snapshot_program.TypeInfo
-	4, // 6: snapshot_program.SnapshotProgramService.Snapshot:input_type -> snapshot_program.SnapshotRequest
-	5, // 7: snapshot_program.SnapshotProgramService.Snapshot:output_type -> snapshot_program.SnapshotResponse
-	7, // [7:8] is the sub-list for method output_type
-	6, // [6:7] is the sub-list for method input_type
-	6, // [6:6] is the sub-list for extension type_name
-	6, // [6:6] is the sub-list for extension extendee
-	0, // [0:6] is the sub-list for field type_name
+	4, // 2: snapshot_program.SnapshotProgram.go_runtime_type_to_type_id:type_name -> snapshot_program.SnapshotProgram.GoRuntimeTypeToTypeIdEntry
+	5, // 3: snapshot_program.SnapshotProgram.type_info:type_name -> snapshot_program.SnapshotProgram.TypeInfoEntry
+	2, // 4: snapshot_program.SnapshotProgram.TypeInfoEntry.value:type_name -> snapshot_program.TypeInfo
+	5, // [5:5] is the sub-list for method output_type
+	5, // [5:5] is the sub-list for method input_type
+	5, // [5:5] is the sub-list for extension type_name
+	5, // [5:5] is the sub-list for extension extendee
+	0, // [0:5] is the sub-list for field type_name
 }
 
 func init() { file_snapshot_program_proto_init() }
@@ -686,30 +572,6 @@ func file_snapshot_program_proto_init() {
 				return nil
 			}
 		}
-		file_snapshot_program_proto_msgTypes[4].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*SnapshotRequest); i {
-			case 0:
-				return &v.state
-			case 1:
-				return &v.sizeCache
-			case 2:
-				return &v.unknownFields
-			default:
-				return nil
-			}
-		}
-		file_snapshot_program_proto_msgTypes[5].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*SnapshotResponse); i {
-			case 0:
-				return &v.state
-			case 1:
-				return &v.sizeCache
-			case 2:
-				return &v.unknownFields
-			default:
-				return nil
-			}
-		}
 	}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
@@ -717,9 +579,9 @@ func file_snapshot_program_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: file_snapshot_program_proto_rawDesc,
 			NumEnums:      0,
-			NumMessages:   8,
+			NumMessages:   6,
 			NumExtensions: 0,
-			NumServices:   1,
+			NumServices:   0,
 		},
 		GoTypes:           file_snapshot_program_proto_goTypes,
 		DependencyIndexes: file_snapshot_program_proto_depIdxs,
