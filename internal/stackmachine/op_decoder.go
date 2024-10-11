@@ -38,6 +38,7 @@ type OpCode uint8
 //go:generate go run golang.org/x/tools/cmd/stringer@v0.22.0 -type=OpCode
 const (
 	OpCodeInvalid               OpCode = 0
+	OpCodeChasePointers         OpCode = 26
 	OpCodeCall                  OpCode = 1
 	OpCodeCondJump              OpCode = 2
 	OpCodeDecrement             OpCode = 3
@@ -47,6 +48,7 @@ const (
 	OpCodeEnqueueSliceHeader    OpCode = 7
 	OpCodeEnqueueStringHeader   OpCode = 8
 	OpCodeEnqueueMapHeader      OpCode = 9
+	OpCodeEnqueueGoContext      OpCode = 27
 	OpCodeJump                  OpCode = 10
 	OpCodePop                   OpCode = 11
 	OpCodePushImm               OpCode = 12
@@ -60,6 +62,8 @@ const (
 	OpCodeCopyFromRegister      OpCode = 20
 	OpCodeZeroFill              OpCode = 21
 	OpCodePrepareFrameData      OpCode = 22
+	OpCodeConcludeFrameData     OpCode = 25
+	PrepareEventData            OpCode = 24
 	OpCodeIllegal               OpCode = 23
 )
 

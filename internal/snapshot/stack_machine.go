@@ -129,7 +129,7 @@ func (s *stackMachine) Run(
 			}
 			s.q.Push(e.data, typeId, 0)
 
-		case OpCodeEnqueueInterface:
+		case OpCodeEnqueueInterface, OpCodeEnqueueGoContext:
 			_ = s.decoder.DecodeEnqueueEmptyInterface()
 			ptr := s.b.Ptr(s.offset)
 			type runtimeIface struct {
