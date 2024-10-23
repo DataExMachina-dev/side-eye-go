@@ -9,6 +9,7 @@ func _() {
 	// Re-run the stringer command to generate them again.
 	var x [1]struct{}
 	_ = x[OpCodeInvalid-0]
+	_ = x[OpCodeChasePointers-26]
 	_ = x[OpCodeCall-1]
 	_ = x[OpCodeCondJump-2]
 	_ = x[OpCodeDecrement-3]
@@ -31,12 +32,17 @@ func _() {
 	_ = x[OpCodeCopyFromRegister-20]
 	_ = x[OpCodeZeroFill-21]
 	_ = x[OpCodePrepareFrameData-22]
+	_ = x[OpCodeConcludeFrameData-25]
+	_ = x[PrepareEventData-24]
+	_ = x[OpCodePrepareGoContext-27]
+	_ = x[OpCodeTraverseGoContext-28]
+	_ = x[OpCodeConcludeGoContext-29]
 	_ = x[OpCodeIllegal-23]
 }
 
-const _OpCode_name = "OpCodeInvalidOpCodeCallOpCodeCondJumpOpCodeDecrementOpCodeEnqueueEmptyInterfaceOpCodeEnqueueInterfaceOpCodeEnqueuePointerOpCodeEnqueueSliceHeaderOpCodeEnqueueStringHeaderOpCodeEnqueueMapHeaderOpCodeJumpOpCodePopOpCodePushImmOpCodePushOffsetOpCodePushSliceLenOpCodeReturnOpCodeSetOffsetOpCodeShiftOffsetOpCodeEnqueueBiasedPointerOpCodeDereferenceCFAOffsetOpCodeCopyFromRegisterOpCodeZeroFillOpCodePrepareFrameDataOpCodeIllegal"
+const _OpCode_name = "OpCodeInvalidOpCodeCallOpCodeCondJumpOpCodeDecrementOpCodeEnqueueEmptyInterfaceOpCodeEnqueueInterfaceOpCodeEnqueuePointerOpCodeEnqueueSliceHeaderOpCodeEnqueueStringHeaderOpCodeEnqueueMapHeaderOpCodeJumpOpCodePopOpCodePushImmOpCodePushOffsetOpCodePushSliceLenOpCodeReturnOpCodeSetOffsetOpCodeShiftOffsetOpCodeEnqueueBiasedPointerOpCodeDereferenceCFAOffsetOpCodeCopyFromRegisterOpCodeZeroFillOpCodePrepareFrameDataOpCodeIllegalPrepareEventDataOpCodeConcludeFrameDataOpCodeChasePointersOpCodePrepareGoContextOpCodeTraverseGoContextOpCodeConcludeGoContext"
 
-var _OpCode_index = [...]uint16{0, 13, 23, 37, 52, 79, 101, 121, 145, 170, 192, 202, 211, 224, 240, 258, 270, 285, 302, 328, 354, 376, 390, 412, 425}
+var _OpCode_index = [...]uint16{0, 13, 23, 37, 52, 79, 101, 121, 145, 170, 192, 202, 211, 224, 240, 258, 270, 285, 302, 328, 354, 376, 390, 412, 425, 441, 464, 483, 505, 528, 551}
 
 func (i OpCode) String() string {
 	if i >= OpCode(len(_OpCode_index)-1) {

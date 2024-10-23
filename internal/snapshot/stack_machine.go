@@ -3,6 +3,8 @@ package snapshot
 import (
 	"unsafe"
 
+	"github.com/DataExMachina-dev/side-eye-go/internal/framing"
+	"github.com/DataExMachina-dev/side-eye-go/internal/snapshotpb"
 	. "github.com/DataExMachina-dev/side-eye-go/internal/stackmachine"
 )
 
@@ -16,10 +18,16 @@ type stackMachine struct {
 	cfa     uintptr
 	decoder OpDecoder
 
+	frameHeader *framing.FrameHeader
+
+	goContextOffset         uint32
+	goContextCaptureBitmask uint64
+
 	q *queue
 	b *outBuf
 	g *goRuntimeTypeResolver
 	t *typeIdResolver
+	p *snapshotpb.SnapshotProgram
 }
 
 type Queue interface {
@@ -56,7 +64,7 @@ type TypeIDResolver interface {
 }
 
 func newStackMachine(
-	prog []byte,
+	p *snapshotpb.SnapshotProgram,
 	q *queue,
 	b *outBuf,
 	g *goRuntimeTypeResolver,
@@ -64,12 +72,90 @@ func newStackMachine(
 ) *stackMachine {
 	return &stackMachine{
 		stack:   make([]uint32, 0, 64),
-		decoder: MakeOpDecoder(prog),
+		decoder: MakeOpDecoder(p.Prog),
 		q:       q,
 		b:       b,
 		g:       g,
 		t:       t,
+		p:       p,
 	}
+}
+
+type ResolvedEmptyInterface struct {
+	addr          uintptr
+	goRuntimeType uint64
+}
+
+func (s *stackMachine) resolveEmptyInterface() *ResolvedEmptyInterface {
+	ptr := s.b.Ptr(s.offset)
+	type runtimeEface struct {
+		_type uintptr
+		data  uintptr
+	}
+	var e runtimeEface
+	e = *(*runtimeEface)(ptr)
+	// nil eface
+	if e._type == 0 {
+		return nil
+	}
+	goRuntimeType := s.g.ResolveTypeAddressToGoRuntimeTypeId((uint64(e._type)))
+	return &ResolvedEmptyInterface{
+		addr:          e.data,
+		goRuntimeType: goRuntimeType,
+	}
+}
+
+type ResolvedAnyType struct {
+	e        ResolvedEmptyInterface
+	typeId   uint32
+	typeInfo *snapshotpb.TypeInfo
+}
+
+func (s *stackMachine) resolveAnyType() *ResolvedAnyType {
+	e := s.resolveEmptyInterface()
+	if e == nil || e.goRuntimeType == 0 {
+		return nil
+	}
+	typeId := s.t.ResolveGoRuntimeTypeToTypeId(e.goRuntimeType)
+	if typeId == 0 {
+		return nil
+	}
+	ti, ok := s.p.TypeInfo[typeId]
+	if !ok {
+		return nil
+	}
+	return &ResolvedAnyType{
+		e:        *e,
+		typeId:   typeId,
+		typeInfo: ti,
+	}
+}
+
+func (s *stackMachine) recordGoContextValue(spec *snapshotpb.GoContextValueType,
+	value *ResolvedAnyType, expectedType uint32) {
+	// Check if this value is already captured
+	if s.goContextCaptureBitmask&(uint64(1)<<uint64(spec.Index)) == 0 {
+		return
+	}
+	s.goContextCaptureBitmask &= ^(uint64(1) << uint64(spec.Index))
+
+	// Record the reference to the value.
+	ptr := s.b.Ptr(s.goContextOffset + spec.Offset + 0)
+	*(*uintptr)(ptr) = value.e.addr
+	ptr = s.b.Ptr(s.goContextOffset + spec.Offset + 8)
+	*(*uint64)(ptr) = value.e.goRuntimeType
+
+	if expectedType != 0 && expectedType != value.typeId {
+		// Type mismatch, just bail, recorded reference will expose the issue upstream.
+		return
+	}
+
+	// Queue the value
+	t := spec.Type
+	if t == 0 {
+		t = value.typeId
+	}
+	s.q.Push(value.e.addr, t, 0)
 }
 
 func (s *stackMachine) Run(
@@ -110,26 +196,19 @@ func (s *stackMachine) Run(
 
 		case OpCodeEnqueueEmptyInterface:
 			_ = s.decoder.DecodeEnqueueEmptyInterface()
-			ptr := s.b.Ptr(s.offset)
-			type runtimeEface struct {
-				_type uintptr
-				data  uintptr
-			}
-			var e runtimeEface
-			e = *(*runtimeEface)(ptr)
-			// nil eface
-			if e._type == 0 {
+			e := s.resolveEmptyInterface()
+			if e == nil {
 				continue
 			}
-			goRuntimeType := s.g.ResolveTypeAddressToGoRuntimeTypeId(uint64(e._type))
-			*(*uint64)(ptr) = goRuntimeType
-			typeId := s.t.ResolveGoRuntimeTypeToTypeId(goRuntimeType)
+			ptr := s.b.Ptr(s.offset)
+			*(*uint64)(ptr) = e.goRuntimeType
+			typeId := s.t.ResolveGoRuntimeTypeToTypeId(e.goRuntimeType)
 			if typeId == 0 {
 				continue
 			}
-			s.q.Push(e.data, typeId, 0)
+			s.q.Push(e.addr, typeId, 0)
 
-		case OpCodeEnqueueInterface, OpCodeEnqueueGoContext:
+		case OpCodeEnqueueInterface:
 			_ = s.decoder.DecodeEnqueueEmptyInterface()
 			ptr := s.b.Ptr(s.offset)
 			type runtimeIface struct {
@@ -281,7 +360,7 @@ func (s *stackMachine) Run(
 
 		case OpCodePrepareFrameData:
 			prepareFrameData := s.decoder.DecodePrepareFrameData()
-			offset, ok := s.b.PrepareFrameData(
+			frameHeader, offset, ok := s.b.PrepareFrameData(
 				prepareFrameData.TypeID,
 				prepareFrameData.ProgID,
 				prepareFrameData.DataByteLen,
@@ -292,6 +371,102 @@ func (s *stackMachine) Run(
 				return false
 			}
 			s.offset = offset
+			s.frameHeader = frameHeader
+
+		case OpCodeConcludeFrameData:
+			s.b.ConcludeFrameData(s.frameHeader)
+
+		case OpCodePrepareGoContext:
+			c := s.decoder.DecodePrepareGoContext()
+			type runtimeIface struct {
+				itab uintptr
+				data uintptr
+			}
+			e := (*runtimeIface)(s.b.Ptr(s.offset))
+			// We use the address of the first object behind the interface
+			// as the address of the captured synthetic go context object.
+			if !s.q.ShouldRecord(e.data, c.TypeID) {
+				continue
+			}
+			o, ok := s.b.writeQueueEntry(framing.QueueEntry{
+				Addr: uint64(e.data),
+				Type: c.TypeID,
+				Len:  c.DataByteLen,
+			})
+			if !ok {
+				continue
+			}
+			s.b.Zero(o, c.DataByteLen)
+			s.goContextOffset = o
+			s.goContextCaptureBitmask = (uint64(1) << uint64(c.CaptureCount)) - 1
+			// We will need to fetch some data into the buf, that we will
+			// later truncate.
+			truncateTarget := s.b.Len()
+			// Iterate over go context implementation stack.
+			for {
+				if s.goContextCaptureBitmask == 0 {
+					break
+				}
+				e = (*runtimeIface)(s.b.Ptr(s.offset))
+				if e.itab == 0 {
+					break
+				}
+				_typeAddr := unsafe.Pointer(uintptr(e.itab) + 8)
+				if !s.b.Dereference(s.offset, uintptr(_typeAddr), 8) {
+					break
+				}
+				goRuntimeType := s.g.ResolveTypeAddressToGoRuntimeTypeId(uint64(e.itab))
+				typeId := s.t.ResolveGoRuntimeTypeToTypeId(goRuntimeType)
+				if typeId == 0 {
+					break
+				}
+				cti, ok := s.p.TypeInfo[typeId]
+				if !ok {
+					break
+				}
+				if cti.GoContextImpl == nil {
+					break
+				}
+				s.offset, ok = s.b.writeQueueEntry(framing.QueueEntry{
+					Addr: uint64(e.data),
+					Type: typeId,
+					Len:  cti.ByteLen,
+				})
+				if !ok {
+					break
+				}
+				// Check if there is there is an interesting value
+				if cti.GoContextImpl.ValueOffset != nil {
+					s.offset += *cti.GoContextImpl.ValueOffset
+					v := s.resolveAnyType()
+					s.offset -= *cti.GoContextImpl.ValueOffset
+					if v != nil {
+						if v.typeInfo.GoContextValue != nil {
+							s.recordGoContextValue(v.typeInfo.GoContextValue, v, 0)
+						}
+						if cti.GoContextImpl.KeyOffset != nil {
+							s.offset += *cti.GoContextImpl.KeyOffset
+							k := s.resolveAnyType()
+							s.offset -= *cti.GoContextImpl.KeyOffset
+							if k != nil {
+								s.recordGoContextValue(
+									k.typeInfo.GoContextKey, v, *k.typeInfo.GoContextKeyValueType)
+							}
+						}
+					}
+				}
+
+				// Check if there is another wrapped context.
+				if cti.GoContextImpl.ContextOffset == nil {
+					break
+				}
+				s.offset += *cti.GoContextImpl.ContextOffset
+			}
+			s.b.truncate(truncateTarget)
+
+		case OpCodeTraverseGoContext:
+		case OpCodeConcludeGoContext:
+			// Not used in the go stack machine.
 
 		case OpCodeIllegal:
 			// This should be totally bogus and generally will not be aligned.

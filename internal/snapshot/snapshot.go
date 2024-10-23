@@ -107,7 +107,7 @@ func newSnapshotter(p *snapshotpb.SnapshotProgram) *snapshotter {
 	b.unwinder = newUnwinder(base)
 	b.goRuntimeTypeResolver = makeGoRuntimeTypeResolver(p.RuntimeConfig, moduledata.GetFirstmoduledata())
 	b.typeIdResolver = typeIdResolver{types: p.GoRuntimeTypeToTypeId}
-	b.sm = newStackMachine(p.Prog, &b.queue, &b.out, &b.goRuntimeTypeResolver, &b.typeIdResolver)
+	b.sm = newStackMachine(b.p, &b.queue, &b.out, &b.goRuntimeTypeResolver, &b.typeIdResolver)
 	return &b
 }
 

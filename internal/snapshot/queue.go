@@ -35,19 +35,25 @@ func (q *queue) Pop() (r framing.QueueEntry, ok bool) {
 	return r, true
 }
 
-// TODO: rethink this boolean return
-func (q *queue) Push(addr uintptr, t uint32, dataLen uint32) bool {
+func (q *queue) ShouldRecord(addr uintptr, t uint32) bool {
 	if addr == 0 {
-		return true
+		return false
 	}
-	if _, ok := q.seen[queueEntryKey{addr: uintptr(addr), t: t}]; ok {
-		return true
+	if _, ok := q.seen[queueEntryKey{addr: addr, t: t}]; ok {
+		return false
 	}
 	q.seen[queueEntryKey{addr: addr, t: t}] = struct{}{}
-	q.q.PushBack(framing.QueueEntry{
-		Addr: uint64(addr),
-		Type: t,
-		Len:  dataLen,
-	})
+	return true
+}
+
+// TODO: rethink this boolean return
+func (q *queue) Push(addr uintptr, t uint32, dataLen uint32) bool {
+	if q.ShouldRecord(addr, t) {
+		q.q.PushBack(framing.QueueEntry{
+			Addr: uint64(addr),
+			Type: t,
+			Len:  dataLen,
+		})
+	}
 	return true
 }

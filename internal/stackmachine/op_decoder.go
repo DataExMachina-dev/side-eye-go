@@ -48,7 +48,6 @@ const (
 	OpCodeEnqueueSliceHeader    OpCode = 7
 	OpCodeEnqueueStringHeader   OpCode = 8
 	OpCodeEnqueueMapHeader      OpCode = 9
-	OpCodeEnqueueGoContext      OpCode = 27
 	OpCodeJump                  OpCode = 10
 	OpCodePop                   OpCode = 11
 	OpCodePushImm               OpCode = 12
@@ -64,6 +63,9 @@ const (
 	OpCodePrepareFrameData      OpCode = 22
 	OpCodeConcludeFrameData     OpCode = 25
 	PrepareEventData            OpCode = 24
+	OpCodePrepareGoContext      OpCode = 27
+	OpCodeTraverseGoContext     OpCode = 28
+	OpCodeConcludeGoContext     OpCode = 29
 	OpCodeIllegal               OpCode = 23
 )
 
@@ -131,7 +133,14 @@ type (
 		DataByteLen uint32
 		TypeID      uint32
 	}
-	OpIllegal struct{}
+	OpPrepareGoContext struct {
+		DataByteLen  uint32
+		TypeID       uint32
+		CaptureCount uint8
+	}
+	OpTraverseGoContext struct{}
+	OpConcludeGoContext struct{}
+	OpIllegal           struct{}
 )
 
 func (d *OpDecoder) PopOpCode() OpCode {
@@ -283,6 +292,23 @@ func (d *OpDecoder) DecodePrepareFrameData() OpPrepareFrameData {
 		DataByteLen: dataByteLen,
 		TypeID:      typeID,
 	}
+}
+func (d *OpDecoder) DecodePrepareGoContext() OpPrepareGoContext {
+	dataByteLen := binary.LittleEndian.Uint32(d.opBuf[d.pc:])
+	typeID := binary.LittleEndian.Uint32(d.opBuf[d.pc+4:])
+	captureCount := uint8(d.opBuf[d.pc+8:][0])
+	d.pc += 9
+	return OpPrepareGoContext{
+		DataByteLen:  dataByteLen,
+		TypeID:       typeID,
+		CaptureCount: captureCount,
+	}
+}
+func (d *OpDecoder) DecodeTraverseGoContext() OpTraverseGoContext {
+	return OpTraverseGoContext{}
+}
+func (d *OpDecoder) DecodeConcludeGoContext() OpConcludeGoContext {
+	return OpConcludeGoContext{}
 }
 func (d *OpDecoder) DecodeIllegal() OpIllegal {
 	return OpIllegal{}

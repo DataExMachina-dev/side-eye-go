@@ -31,7 +31,7 @@ func (o *outBuf) PrepareFrameData(
 	progID uint32,
 	dataLen uint32,
 	depth uint32,
-) (offset uint32, ok bool) {
+) (*framing.FrameHeader, uint32, bool) {
 	paddedLen := dataLen
 	rem := paddedLen % 8
 	if rem != 0 {
@@ -41,13 +41,15 @@ func (o *outBuf) PrepareFrameData(
 	newLen := len(o.out) + int(unsafe.Sizeof(framing.FrameHeader{})) + int(unsafe.Sizeof(framing.QueueEntry{})) + int(paddedLen)
 	if newLen > cap(o.out) {
 		o.isFull = true
-		return 0, false
+		return nil, 0, false
 	}
 	o.out = o.out[:newLen]
 	queueEntryOffset := frameHeaderOffset + uint32(unsafe.Sizeof(framing.FrameHeader{}))
-	*(*framing.FrameHeader)(o.Ptr(frameHeaderOffset)) = framing.FrameHeader{
-		Depth:       depth,
-		DataByteLen: paddedLen + uint32(unsafe.Sizeof(framing.QueueEntry{})),
+	var frameHeader *framing.FrameHeader = (*framing.FrameHeader)(o.Ptr(frameHeaderOffset))
+	*frameHeader = framing.FrameHeader{
+		Depth: depth,
+		// Actual length will be computed once frame is processed.
+		DataByteLen: queueEntryOffset,
 		ProgID:      progID,
 	}
 	*(*framing.QueueEntry)(o.Ptr(queueEntryOffset)) = framing.QueueEntry{
@@ -55,7 +57,11 @@ func (o *outBuf) PrepareFrameData(
 		Len:  dataLen,
 		Addr: 0,
 	}
-	return queueEntryOffset + uint32(unsafe.Sizeof(framing.QueueEntry{})), true
+	return frameHeader, queueEntryOffset + uint32(unsafe.Sizeof(framing.QueueEntry{})), true
+}
+
+func (o *outBuf) ConcludeFrameData(frameHeader *framing.FrameHeader) {
+	frameHeader.DataByteLen = o.Len() - frameHeader.DataByteLen
 }
 
 // Ptr implements stackmachine.OutBuf.
