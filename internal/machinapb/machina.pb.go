@@ -357,8 +357,6 @@ type EventsResponse struct {
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
 
-	// TODO: Add a trailing message with statistics about the events.
-	//
 	// Types that are assignable to Response:
 	//
 	//	*EventsResponse_Event_

@@ -97,7 +97,6 @@ message EventsResponse {
 
   message Detached { SummaryStatistics summary_statistics = 1; }
 
-  // TODO: Add a trailing message with statistics about the events.
   oneof response {
     Event event = 1;
     ApproximateBootTime approximate_boot_time = 2;
