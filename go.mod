@@ -3,7 +3,7 @@ module github.com/DataExMachina-dev/side-eye-go
 go 1.20
 
 require (
-	github.com/google/uuid v1.6.0
+	github.com/google/uuid v1.5.0
 	github.com/minio/highwayhash v1.0.2
 	golang.org/x/sync v0.7.0
 	google.golang.org/grpc v1.56.3
