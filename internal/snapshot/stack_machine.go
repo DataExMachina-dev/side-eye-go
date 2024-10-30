@@ -448,7 +448,7 @@ func (s *stackMachine) Run(
 							s.offset += *cti.GoContextImpl.KeyOffset
 							k := s.resolveAnyType()
 							s.offset -= *cti.GoContextImpl.KeyOffset
-							if k != nil {
+							if k != nil && k.typeInfo.GoContextKey != nil {
 								s.recordGoContextValue(
 									k.typeInfo.GoContextKey, v, *k.typeInfo.GoContextKeyValueType)
 							}
