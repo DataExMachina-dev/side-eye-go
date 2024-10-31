@@ -18,6 +18,10 @@ const _ = grpc.SupportPackageIsVersion7
 //
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 type ApiServiceClient interface {
+	// CaptureSnapshot captures a snapshot of the specified environment or the
+	// specified process. If no snapshots are snapshotted successfully, it returns
+	// an error containing SnapshotError as a detail. If at least one process
+	// snapshot is successful, the RPC is successful.
 	CaptureSnapshot(ctx context.Context, in *CaptureSnapshotRequest, opts ...grpc.CallOption) (*CaptureSnapshotResponse, error)
 }
 
@@ -42,6 +46,10 @@ func (c *apiServiceClient) CaptureSnapshot(ctx context.Context, in *CaptureSnaps
 // All implementations must embed UnimplementedApiServiceServer
 // for forward compatibility
 type ApiServiceServer interface {
+	// CaptureSnapshot captures a snapshot of the specified environment or the
+	// specified process. If no snapshots are snapshotted successfully, it returns
+	// an error containing SnapshotError as a detail. If at least one process
+	// snapshot is successful, the RPC is successful.
 	CaptureSnapshot(context.Context, *CaptureSnapshotRequest) (*CaptureSnapshotResponse, error)
 	mustEmbedUnimplementedApiServiceServer()
 }

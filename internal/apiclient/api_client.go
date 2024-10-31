@@ -4,17 +4,18 @@ import (
 	"context"
 	"crypto/tls"
 	"fmt"
-	"github.com/DataExMachina-dev/side-eye-go/internal/apipb"
+	"net"
+	"net/url"
+	"os"
+
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/credentials"
 	"google.golang.org/grpc/credentials/insecure"
 	"google.golang.org/grpc/metadata"
 	"google.golang.org/grpc/status"
-	"net"
-	"net/url"
-	"os"
-	"strings"
+
+	"github.com/DataExMachina-dev/side-eye-go/internal/apipb"
 )
 
 const ENV_API_URL = "SIDE_EYE_API_URL"
@@ -89,21 +90,30 @@ func (c *APIClient) CaptureSnapshot(
 	}
 	res, err := c.client.CaptureSnapshot(ctx, req)
 	if err != nil {
+		// Recognize some error details and turn them into typed errors.
 		s, ok := status.FromError(err)
-		if ok {
-			switch s.Code() {
-			case codes.Unavailable:
-				return SnapshotResult{}, fmt.Errorf("failed to connect to Side-Eye API service: %w", err)
-			case codes.NotFound:
-				return SnapshotResult{}, NoProcessesError{}
-			case codes.FailedPrecondition:
-				if strings.Contains(s.Message(), "no agents connected") {
+		if ok && len(s.Details()) > 0 {
+			detail := s.Details()[0]
+			if sErr, ok := detail.(*apipb.SnapshotError); ok {
+				switch sErr.ErrorKind {
+				case apipb.ErrorKind_BINARY_STRIPPED:
+					return SnapshotResult{}, BinaryStrippedError{
+						msg: sErr.Message,
+					}
+				case apipb.ErrorKind_NO_AGENTS:
 					return SnapshotResult{}, NoAgentsError{}
-				}
-				if strings.Contains(s.Message(), "no agents found for environment") {
-					return SnapshotResult{}, EnvMissingError{msg: s.Message()}
+				case apipb.ErrorKind_NO_PROCESSES:
+					return SnapshotResult{}, NoProcessesError{}
+				case apipb.ErrorKind_PROCESS_MISSING:
+					return SnapshotResult{}, ProcessMissingError{}
+				case apipb.ErrorKind_ENVIRONMENT_MISSING:
+					return SnapshotResult{}, EnvMissingError{msg: sErr.Message}
 				}
 			}
+		}
+		switch s.Code() {
+		case codes.Unavailable:
+			return SnapshotResult{}, fmt.Errorf("failed to connect to Side-Eye API service: %w", err)
 		}
 		return SnapshotResult{}, err
 	}
@@ -117,7 +127,7 @@ func (c *APIClient) CaptureSnapshot(
 			Hostname: pe.Hostname,
 			Program:  pe.Program,
 			Pid:      int(pe.Pid),
-			Error:    pe.Error,
+			Error:    pe.Message,
 		})
 	}
 	return snapRes, nil
@@ -132,6 +142,14 @@ type ProcessError struct {
 	Error    string
 }
 
+type ProcessMissingError struct{}
+
+var _ error = ProcessMissingError{}
+
+func (n ProcessMissingError) Error() string {
+	return "process not found"
+}
+
 // NoProcessesError is returned when none of the agents are reporting any
 // processes that Side-Eye is configured to monitor.
 type NoProcessesError struct{}
@@ -140,6 +158,16 @@ var _ error = NoProcessesError{}
 
 func (n NoProcessesError) Error() string {
 	return "no matching processes found"
+}
+
+type BinaryStrippedError struct {
+	msg string
+}
+
+var _ error = BinaryStrippedError{}
+
+func (b BinaryStrippedError) Error() string {
+	return b.msg
 }
 
 // NoAgentsError is returned when no agents are connected to Side-Eye (with a

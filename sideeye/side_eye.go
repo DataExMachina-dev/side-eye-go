@@ -8,7 +8,6 @@ import (
 	"github.com/DataExMachina-dev/side-eye-go/internal/apiclient"
 	"github.com/DataExMachina-dev/side-eye-go/internal/apipb"
 	"github.com/DataExMachina-dev/side-eye-go/internal/sideeyeconn"
-	"log"
 )
 
 // ENV_AGENT_URL is the environment variable that overrides the URL to which
@@ -135,15 +134,15 @@ func CaptureSelfSnapshot(
 		return "", fmt.Errorf("failed to create Side-Eye API client: %w", err)
 	}
 	defer apiClient.Close()
-	log.Printf("capturing self snapshot...")
 	res, err := apiClient.CaptureSnapshot(ctx,
 		&apipb.CaptureSnapshotRequest{
 			AgentFingerprint:   conn.AgentFingerprint().String(),
 			ProcessFingerprint: conn.ProcessFingerprint(),
 		})
 	if err != nil {
-		return "", fmt.Errorf("failed to capture Side-Eye snapshot: %w", err)
+		return "", err
 	}
-	log.Printf("capturing self snapshot... done")
 	return res.SnapshotURL, nil
 }
+
+type BinaryStrippedError = apiclient.BinaryStrippedError

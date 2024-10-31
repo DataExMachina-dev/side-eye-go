@@ -27,10 +27,33 @@ message ProcessError {
   string hostname = 1;
   string program = 2;
   int64 pid = 3;
-  string error = 4;
+  string message = 4;
+  ErrorKind error_kind = 5;
+}
+
+// SnapshotError is returned as an error detail by CaptureSnapshot when all the
+// processes fail.
+message SnapshotError {
+  // The error message as a human-readable string. This is the same as the
+  // message of the outer gRPC error.
+  string message = 1;
+  ErrorKind error_kind = 2;
+}
+
+enum ErrorKind {
+  UNKNOWN = 0;
+  BINARY_STRIPPED = 1;
+  NO_AGENTS = 2;
+  NO_PROCESSES = 3;
+  PROCESS_MISSING = 4;
+  ENVIRONMENT_MISSING = 5;
 }
 
 // The service exposes an interface for capturing snapshots programmatically.
 service ApiService {
+  // CaptureSnapshot captures a snapshot of the specified environment or the
+  // specified process. If no snapshots are snapshotted successfully, it returns
+  // an error containing SnapshotError as a detail. If at least one process
+  // snapshot is successful, the RPC is successful.
   rpc CaptureSnapshot(CaptureSnapshotRequest) returns (CaptureSnapshotResponse);
 }
