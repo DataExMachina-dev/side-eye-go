@@ -22,13 +22,21 @@ import (
 
 // Server implements the machinapb.MachinaServer interface.
 type Server struct {
-	// The ID that this library identifies as to the Side-Eye service.
+	// The ID that this process identifies as to the Side-Eye service, as it
+	// connects as an agent.
 	agentFingerprint uuid.UUID
-	tenantToken      string
-	environment      string
+	// processFingerprint is the process ID that will be reported to the Side-Eye
+	// service.
+	processFingerprint string
+
+	tenantToken string
+	environment string
 	// The name of the program to be reported for the current process.
 	programName string
-	fetcher     SnapshotFetcher
+	// ephemeralProcess is set if this process should not be visible in the
+	// Side-Eye UI.
+	ephemeralProcess bool
+	fetcher          SnapshotFetcher
 
 	hash binaryHashOnce
 
@@ -45,18 +53,22 @@ type binaryHashOnce struct {
 
 // NewServer constructs a new Server object.
 func NewServer(
-	fingerprint uuid.UUID,
+	agentFingerprint uuid.UUID,
+	processFingerprint string,
 	tenantToken string,
 	environment string,
 	programName string,
 	fetcher SnapshotFetcher,
+	ephemeralProcess bool,
 ) *Server {
 	return &Server{
-		agentFingerprint: fingerprint,
-		tenantToken:      tenantToken,
-		environment:      environment,
-		programName:      programName,
-		fetcher:          fetcher,
+		agentFingerprint:   agentFingerprint,
+		processFingerprint: processFingerprint,
+		tenantToken:        tenantToken,
+		environment:        environment,
+		programName:        programName,
+		fetcher:            fetcher,
+		ephemeralProcess:   ephemeralProcess,
 	}
 }
 
@@ -156,17 +168,6 @@ func (s *Server) WatchProcesses(req *machinapb.WatchProcessesRequest, watchServe
 	if err != nil {
 		return fmt.Errorf("failed to get binary hash: %w", err)
 	}
-	ti, err := getStartTime()
-	if err != nil {
-		return fmt.Errorf("failed to get start time: %w", err)
-	}
-	fingerprint := fmt.Sprintf(
-		"%s:%d:%d.%d",
-		s.agentFingerprint.String(),
-		os.Getpid(),
-		ti.Unix(),
-		ti.UnixNano()-ti.Unix()*1_000_000_000,
-	)
 	exePath, err := os.Executable()
 	if err != nil {
 		return fmt.Errorf("failed to get executable path: %w", err)
@@ -179,10 +180,11 @@ func (s *Server) WatchProcesses(req *machinapb.WatchProcessesRequest, watchServe
 		Env:         os.Environ(),
 		StartTime:   &timestamppb.Timestamp{},
 		BinaryHash:  hash,
-		Fingerprint: fingerprint,
+		Fingerprint: s.processFingerprint,
 		Environment: s.environment,
 		Program:     s.programName,
-		Labels:      []*machinapb.LabelValue{},
+		Labels:      []*machinapb.LabelValue{{Label: "side-eye-go"}},
+		Ephemeral:   s.ephemeralProcess,
 	}
 
 	if err := watchServer.Send(&machinapb.Update{

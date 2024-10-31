@@ -3,6 +3,7 @@ package sideeye
 import (
 	"context"
 	"fmt"
+	"github.com/DataExMachina-dev/side-eye-go/internal/sideeyeconn"
 	"html/template"
 	"net/http"
 	"time"
@@ -70,11 +71,11 @@ var configPageTemplate = template.Must(template.
 // establish a connection to Side-Eye. However, the web page served by this
 // handler can be used to establish a connection manually.
 func HttpHandler(opts ...Option) http.Handler {
-	var cfg config
-	if singletonConn.Status() == Uninitialized {
-		cfg = makeDefaultConfig("" /* programName */)
+	var cfg sideeyeconn.Config
+	if singletonConn.Status() == sideeyeconn.Uninitialized {
+		cfg = sideeyeconn.MakeDefaultConfig("" /* programName */)
 	} else {
-		cfg = singletonConn.activeConfig
+		cfg = singletonConn.ActiveConfig
 	}
 	for _, opt := range opts {
 		opt.apply(&cfg)
@@ -86,7 +87,7 @@ func HttpHandler(opts ...Option) http.Handler {
 
 type httpHandler struct {
 	// The config that the configuration page updates.
-	config config
+	config sideeyeconn.Config
 }
 
 func (h *httpHandler) ServeHTTP(w http.ResponseWriter, req *http.Request) {
@@ -99,7 +100,7 @@ func (h *httpHandler) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	// If this is a POST request, stop the old connection (if any) and, if a token
 	// is specified, start a new connection using it.
 	if err := req.ParseForm(); err != nil {
-		singletonConn.activeConfig.errorLogger(fmt.Errorf("failed to parse form: %w", err))
+		singletonConn.ActiveConfig.ErrorLogger(fmt.Errorf("failed to parse form: %w", err))
 		return
 	}
 
@@ -110,7 +111,7 @@ func (h *httpHandler) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	}
 
 	if _, ok := req.Form["connect"]; !ok {
-		singletonConn.activeConfig.errorLogger(fmt.Errorf("invalid POST: missing connect/disconnect"))
+		singletonConn.ActiveConfig.ErrorLogger(fmt.Errorf("invalid POST: missing connect/disconnect"))
 		return
 	}
 
@@ -120,26 +121,26 @@ func (h *httpHandler) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	if tok, ok := req.Form["token"]; ok {
 		newToken = tok[0]
 	} else {
-		singletonConn.activeConfig.errorLogger(fmt.Errorf("invalid POST: missing token"))
+		singletonConn.ActiveConfig.ErrorLogger(fmt.Errorf("invalid POST: missing token"))
 		return
 	}
 	if env, ok := req.Form["env"]; ok {
 		newEnv = env[0]
 	} else {
-		singletonConn.activeConfig.errorLogger(fmt.Errorf("invalid POST: missing env"))
+		singletonConn.ActiveConfig.ErrorLogger(fmt.Errorf("invalid POST: missing env"))
 		return
 	}
 	if prog, ok := req.Form["programName"]; ok {
 		newProg = prog[0]
 	} else {
-		singletonConn.activeConfig.errorLogger(fmt.Errorf("invalid POST: missing program name"))
+		singletonConn.ActiveConfig.ErrorLogger(fmt.Errorf("invalid POST: missing program name"))
 		return
 	}
 
 	// Update the config stored in the HTTP handler.
-	h.config.tenantToken = newToken
-	h.config.programName = newProg
-	h.config.environment = newEnv
+	h.config.TenantToken = newToken
+	h.config.ProgramName = newProg
+	h.config.Environment = newEnv
 
 	if newToken == "" {
 		h.handleGet(w, "An API token is required.")
@@ -156,7 +157,7 @@ func (h *httpHandler) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 
 	err := Init(context.Background(), newProg, WithToken(newToken), WithEnvironment(newEnv))
 	if err != nil {
-		singletonConn.activeConfig.errorLogger(fmt.Errorf("failed to update config: %w", err))
+		singletonConn.ActiveConfig.ErrorLogger(fmt.Errorf("failed to update config: %w", err))
 	}
 	// Wait a little bit for the connection to be established before rendering
 	// the page.
@@ -165,7 +166,7 @@ func (h *httpHandler) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 		if time.Now().After(timeout) {
 			break
 		}
-		if singletonConn.Status() != Connecting {
+		if singletonConn.Status() != sideeyeconn.Connecting {
 			break
 		}
 		time.Sleep(10 * time.Millisecond)
@@ -186,26 +187,26 @@ func (h *httpHandler) handleGet(w http.ResponseWriter, errMsg string) {
 	// with different options.
 	cfg := h.config
 	s := singletonConn.Status()
-	if s == Connected || s == Connecting {
-		cfg = singletonConn.activeConfig
+	if s == sideeyeconn.Connected || s == sideeyeconn.Connecting {
+		cfg = singletonConn.ActiveConfig
 	}
 
 	err := configPageTemplate.Execute(w, &templateData{
 		Conn:    singletonConn,
 		ErrMsg:  errMsg,
-		Token:   cfg.tenantToken,
-		Program: cfg.programName,
-		Env:     cfg.environment,
+		Token:   cfg.TenantToken,
+		Program: cfg.ProgramName,
+		Env:     cfg.Environment,
 	})
 	if err != nil {
-		singletonConn.activeConfig.errorLogger(fmt.Errorf("failed to write response: %w", err))
+		singletonConn.ActiveConfig.ErrorLogger(fmt.Errorf("failed to write response: %w", err))
 		return
 	}
 }
 
 // templateData represents the data for the html template.
 type templateData struct {
-	Conn    *sideEyeConn
+	Conn    *sideeyeconn.SideEyeConn
 	ErrMsg  string
 	Token   string
 	Program string
@@ -214,9 +215,9 @@ type templateData struct {
 
 func (td *templateData) ConnColor() string {
 	switch td.Conn.Status() {
-	case Uninitialized, Connecting, Disconnected:
+	case sideeyeconn.Uninitialized, sideeyeconn.Connecting, sideeyeconn.Disconnected:
 		return "red"
-	case Connected:
+	case sideeyeconn.Connected:
 		return "green"
 	default:
 		return ""
@@ -225,11 +226,11 @@ func (td *templateData) ConnColor() string {
 
 func (td *templateData) ConnStatus() string {
 	switch td.Conn.Status() {
-	case Uninitialized, Disconnected:
+	case sideeyeconn.Uninitialized, sideeyeconn.Disconnected:
 		return "disconnected"
-	case Connected:
+	case sideeyeconn.Connected:
 		return "connected"
-	case Connecting:
+	case sideeyeconn.Connecting:
 		return "connecting"
 	default:
 		return ""
@@ -238,9 +239,9 @@ func (td *templateData) ConnStatus() string {
 
 func (td *templateData) DisconnectEnabled() bool {
 	switch td.Conn.Status() {
-	case Uninitialized, Disconnected:
+	case sideeyeconn.Uninitialized, sideeyeconn.Disconnected:
 		return false
-	case Connected, Connecting:
+	case sideeyeconn.Connected, sideeyeconn.Connecting:
 		return true
 	default:
 		return false

@@ -78,6 +78,11 @@ message Process {
 
   // The labels, as assigned by the labeling rules applied by the agent.
   repeated LabelValue labels = 10;
+
+  // The ephemeral flag indicates that the process is not expected to be long
+  // lived. Data is supposed to filter out these processes from showing up in
+  // the UI.
+  bool ephemeral = 11;
 }
 
 message LabelValue {

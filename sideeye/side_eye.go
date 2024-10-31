@@ -5,63 +5,32 @@ package sideeye
 import (
 	"context"
 	"fmt"
-	"net/netip"
-	"net/url"
-	"os"
-	"sync"
-
-	"github.com/DataExMachina-dev/side-eye-go/internal/artifactspb"
-	"github.com/DataExMachina-dev/side-eye-go/internal/machinapb"
-	"github.com/DataExMachina-dev/side-eye-go/internal/server"
-	"github.com/DataExMachina-dev/side-eye-go/internal/serverdial"
-	"github.com/google/uuid"
-	"google.golang.org/grpc"
-	"google.golang.org/grpc/credentials"
-	"google.golang.org/grpc/credentials/insecure"
+	"github.com/DataExMachina-dev/side-eye-go/internal/apiclient"
+	"github.com/DataExMachina-dev/side-eye-go/internal/apipb"
+	"github.com/DataExMachina-dev/side-eye-go/internal/sideeyeconn"
+	"log"
 )
 
-// Option to configure the side-eye library.
+// ENV_AGENT_URL is the environment variable that overrides the URL to which
+// side-eye-go connects to as an agent.
+const ENV_AGENT_URL = sideeyeconn.ENV_AGENT_URL
+
+// Option to configure the Side-Eye library.
 type Option interface {
-	apply(*config)
+	apply(*sideeyeconn.Config)
 }
 
-type config struct {
-	tenantToken string
-	apiUrl      string
-	environment string
-	programName string
-	errorLogger func(err error)
-}
-
-const (
-	defaultApiUrl = "https://internal-api.side-eye.io:443"
-
-	ENV_API_URL      = "SIDE_EYE_API_URL"
-	ENV_TENANT_TOKEN = "SIDE_EYE_TOKEN"
-	ENV_ENVIRONMENT  = "SIDE_EYE_ENVIRONMENT"
-)
-
-func makeDefaultConfig(programName string) config {
-	cfg := config{
-		programName: programName,
-		apiUrl:      defaultApiUrl,
-		errorLogger: func(err error) {},
-	}
-	if os.Getenv(ENV_TENANT_TOKEN) != "" {
-		cfg.tenantToken = os.Getenv(ENV_TENANT_TOKEN)
-	}
-	if os.Getenv(ENV_API_URL) != "" {
-		cfg.apiUrl = os.Getenv(ENV_API_URL)
-	}
-	if os.Getenv(ENV_ENVIRONMENT) != "" {
-		cfg.environment = os.Getenv(ENV_ENVIRONMENT)
+func makeConfig(programName string, opts ...Option) sideeyeconn.Config {
+	cfg := sideeyeconn.MakeDefaultConfig(programName)
+	for _, opt := range opts {
+		opt.apply(&cfg)
 	}
 	return cfg
 }
 
-type optionFunc func(cfg *config)
+type optionFunc func(cfg *sideeyeconn.Config)
 
-func (f optionFunc) apply(cfg *config) {
+func (f optionFunc) apply(cfg *sideeyeconn.Config) {
 	f(cfg)
 }
 
@@ -70,8 +39,8 @@ func (f optionFunc) apply(cfg *config) {
 //
 // To get your organization's token, log in app.side-eye.io.
 func WithToken(token string) Option {
-	return optionFunc(func(cfg *config) {
-		cfg.tenantToken = token
+	return optionFunc(func(cfg *sideeyeconn.Config) {
+		cfg.TenantToken = token
 	})
 }
 
@@ -82,22 +51,22 @@ func WithToken(token string) Option {
 // will still be monitored by Side-Eye but it will not be part of any named
 // environment.
 func WithEnvironment(env string) Option {
-	return optionFunc(func(cfg *config) {
-		cfg.environment = env
+	return optionFunc(func(cfg *sideeyeconn.Config) {
+		cfg.Environment = env
 	})
 }
 
 func WithProgramName(programName string) Option {
-	return optionFunc(func(cfg *config) {
-		cfg.programName = programName
+	return optionFunc(func(cfg *sideeyeconn.Config) {
+		cfg.ProgramName = programName
 	})
 }
 
 // WithErrorLogger sets a function to be called with errors (for example for
 // logging them).
 func WithErrorLogger(f func(err error)) Option {
-	return optionFunc(func(cfg *config) {
-		cfg.errorLogger = f
+	return optionFunc(func(cfg *sideeyeconn.Config) {
+		cfg.ErrorLogger = f
 	})
 }
 
@@ -113,7 +82,11 @@ func Init(
 	programName string,
 	opts ...Option,
 ) error {
-	if err := singletonConn.Connect(ctx, programName, opts...); err != nil {
+	cfg := sideeyeconn.MakeDefaultConfig(programName)
+	for _, opt := range opts {
+		opt.apply(&cfg)
+	}
+	if err := singletonConn.Connect(ctx, cfg, false /* ephemeralProcess */); err != nil {
 		return fmt.Errorf("failed to connect to Side-Eye: %w", err)
 	}
 	return nil
@@ -127,195 +100,50 @@ func Stop() {
 }
 
 // singletonConn is the connection manipulated by Init() / Stop().
-var singletonConn = newSideEyeConn()
+var singletonConn = sideeyeconn.NewSideEyeConn()
 
-// sideEyeConn represents a connection to the Side-Eye cloud service.
-type sideEyeConn struct {
-	activeConfig config
-	server       *server.Server
-	grpcServer   *grpc.Server
-	grpcConn     *grpc.ClientConn
-
-	// Fields that change in Connect/Close
-	mu struct {
-		sync.Mutex
-		listener *serverdial.Listener
-	}
-
-	wg *sync.WaitGroup
-}
-
-func newSideEyeConn() *sideEyeConn {
-	return &sideEyeConn{
-		activeConfig: config{
-			// no-op logger
-			errorLogger: func(err error) {},
-		},
-	}
-}
-
-// Connect connects to the Side-Eye cloud service and registers this process to
-// be monitored. A goroutine is started to handle incoming RPCs.
+// CaptureSelfSnapshot captures a snapshot of the current process.
 //
-// programName is the name of the program that this process will correspond to
-// on app.side-eye.io.
-func (c *sideEyeConn) Connect(
-	ctx context.Context,
-	programName string,
-	opts ...Option,
-) error {
-	// If we were already connected, terminate that connection.
-	c.Close()
-
-	cfg := makeDefaultConfig(programName)
-	for _, opt := range opts {
-		opt.apply(&cfg)
+// If ctx has a timeout/deadline/cancellation, CaptureSelfSnapshot will return
+// when the context is canceled.
+//
+// It is equivalent to:
+// ```
+// Init(WithEnvironment(<unique name>), WithProgramName("myProgram"))
+// defer Stop()
+// sideeyeclient.CaptureSnapshot(ctx, <unique name>)
+// ```
+// with the following differences:
+//   - The current process never appears in the list of processes seen on
+//     https://app.side-eye.io.
+//   - CaptureSelfSnapshot() deals with the race between the process
+//     being registered and the snapshot being captured.
+func CaptureSelfSnapshot(
+	ctx context.Context, programName string, opts ...Option,
+) (string, error) {
+	// Connect to the Side-Eye service as a monitored process in "ephemeral" mode.
+	cfg := makeConfig(programName, opts...)
+	conn := sideeyeconn.NewSideEyeConn()
+	if err := conn.Connect(ctx, cfg, true /* ephemeralProcess */); err != nil {
+		return "", fmt.Errorf("failed to connect to Side-Eye: %w", err)
 	}
+	defer conn.Close()
 
-	if cfg.tenantToken == "" {
-		return fmt.Errorf("missing token")
-	}
-
-	agentFingerprint, err := uuid.NewRandom()
+	// Connect to the Side-Eye API and ask for a snapshot of the current process.
+	apiClient, err := apiclient.NewAPIClient(cfg.TenantToken)
 	if err != nil {
-		return fmt.Errorf("failed to generate fingerprint: %w", err)
+		return "", fmt.Errorf("failed to create Side-Eye API client: %w", err)
 	}
-
-	l, err := serverdial.NewListener(cfg.apiUrl, cfg.errorLogger)
+	defer apiClient.Close()
+	log.Printf("capturing self snapshot...")
+	res, err := apiClient.CaptureSnapshot(ctx,
+		&apipb.CaptureSnapshotRequest{
+			AgentFingerprint:   conn.AgentFingerprint().String(),
+			ProcessFingerprint: conn.ProcessFingerprint(),
+		})
 	if err != nil {
-		return fmt.Errorf("failed to create listener: %w", err)
+		return "", fmt.Errorf("failed to capture Side-Eye snapshot: %w", err)
 	}
-
-	s := grpc.NewServer()
-	client, conn, err := newArtifactsClient(cfg.apiUrl)
-	if err != nil {
-		return fmt.Errorf("failed to create artifacts client: %w", err)
-	}
-	fetcher := server.NewSnapshotFetcher(client)
-	server := server.NewServer(agentFingerprint, cfg.tenantToken, cfg.environment, cfg.programName, fetcher)
-	machinapb.RegisterMachinaServer(s, server)
-	c.activeConfig = cfg
-	c.server = server
-	c.grpcServer = s
-	c.grpcConn = conn
-	c.setListener(l)
-	wg := &sync.WaitGroup{}
-	wg.Add(1)
-	c.wg = wg
-
-	go func() {
-		defer wg.Done()
-		defer c.closeInner()
-		if err := s.Serve(l); err != nil {
-			// TODO: Handle this error better.
-			cfg.errorLogger(fmt.Errorf("failed to serve: %w", err))
-		}
-	}()
-	return nil
-}
-
-func (c *sideEyeConn) setListener(l *serverdial.Listener) {
-	c.mu.Lock()
-	c.mu.listener = l
-	c.mu.Unlock()
-}
-
-func (c *sideEyeConn) listener() *serverdial.Listener {
-	c.mu.Lock()
-	defer c.mu.Unlock()
-	return c.mu.listener
-}
-
-// Close closes the connection. It's a no-op if the connection was never
-// established. Connect() can be called again after Close() to re-establish the
-// connection.
-func (c *sideEyeConn) Close() {
-	if c.listener() == nil {
-		return
-	}
-
-	c.closeInner()
-
-	// Synchronize with the goroutine handling RPCs.
-	c.wg.Wait()
-}
-
-// closeInner closes the connection. Unlike Close(), it doesn't wait for the
-// server goroutine to terminate.
-func (c *sideEyeConn) closeInner() {
-	if c.listener == nil {
-		return
-	}
-	c.grpcServer.Stop()
-	c.grpcConn.Close()
-	c.grpcConn = nil
-	c.grpcServer = nil
-	c.server = nil
-	c.setListener(nil)
-}
-
-type ConnectionStatus int
-
-const (
-	UnknownStatus ConnectionStatus = iota
-	// Uninitialized means Connect() was never called, or Close() was called.
-	Uninitialized
-	Connected
-	Disconnected
-	Connecting
-)
-
-func (c *sideEyeConn) Status() ConnectionStatus {
-	l := c.listener()
-	if l == nil {
-		return Uninitialized
-	}
-	switch s := l.ConnectionStatus(); s {
-	case serverdial.UnknownStatus:
-		return UnknownStatus
-	case serverdial.Connecting:
-		return Connecting
-	case serverdial.Connected:
-		return Connected
-	case serverdial.Disconnected:
-		return Disconnected
-	default:
-		panic(fmt.Sprintf("unexpected status: %v", s))
-	}
-}
-
-func newArtifactsClient(
-	addr string,
-) (artifactspb.ArtifactStoreClient, *grpc.ClientConn, error) {
-	u, err := url.Parse(addr)
-	if err != nil {
-		return nil, nil, fmt.Errorf("failed to parse url: %w", err)
-	}
-	var opts []grpc.DialOption
-	switch u.Scheme {
-	case "http":
-		opts = append(opts, grpc.WithTransportCredentials(insecure.NewCredentials()))
-	case "https":
-		opts = append(opts, grpc.WithTransportCredentials(credentials.NewTLS(nil)))
-	default:
-		return nil, nil, fmt.Errorf("unsupported scheme: %s", u.Scheme)
-	}
-	if ip, err := netip.ParseAddr(u.Hostname()); err == nil {
-		if ip.Is4() {
-			addr = ip.String()
-		} else {
-			addr = ip.String()
-		}
-		if u.Port() != "" {
-			addr = fmt.Sprintf("%s:%s", addr, u.Port())
-		}
-	} else {
-		addr = fmt.Sprintf("dns:///%s", u.Host)
-	}
-
-	conn, err := grpc.DialContext(context.Background(), addr, opts...)
-	if err != nil {
-		return nil, nil, err
-	}
-	return artifactspb.NewArtifactStoreClient(conn), conn, nil
+	log.Printf("capturing self snapshot... done")
+	return res.SnapshotURL, nil
 }

@@ -8,6 +8,13 @@ message CaptureSnapshotRequest {
   // with this environment. If empty, it refers to agents not configured with
   // any environment.
   string environment = 1;
+
+  // If environment is not set, agent_fingerprint and process_fingerprint must
+  // be set; they identify a single process to capture a snapshot by identifying
+  // one particular agent and one process monitored by that agent. This is used
+  // by the side-eye-go library to capture a snapshot of its own process.
+  string agent_fingerprint = 2;
+  string process_fingerprint = 3;
 }
 
 message CaptureSnapshotResponse {

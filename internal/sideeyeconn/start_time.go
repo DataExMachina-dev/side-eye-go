@@ -1,4 +1,4 @@
-package server
+package sideeyeconn
 
 import (
 	"time"
@@ -8,6 +8,6 @@ import (
 // of the process fingerprint.
 var startTime = time.Now()
 
-func getStartTime() (time.Time, error) {
-	return startTime, nil
+func getStartTime() time.Time {
+	return startTime
 }
