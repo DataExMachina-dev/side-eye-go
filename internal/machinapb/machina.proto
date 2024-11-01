@@ -57,6 +57,12 @@ message EventsRequest {
   message Stream {
     // The number of events to stream.
     uint32 max_count = 1;
+
+    // The duration to stream events for. This is used as an upper bound on the
+    // duration to run the probe. In the common case, the client should send a
+    // finish message to terminate the probe before this duration elapses. This
+    // value is used to defend against unresponsive clients.
+    optional uint64 duration_ns = 2;
   }
 
   message Finish {}
