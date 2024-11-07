@@ -2,10 +2,6 @@
 
 package allgs
 
-import (
-	_ "unsafe" // for go:linkname
-)
-
 // defined constants
 const (
 	// G status

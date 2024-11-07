@@ -27,17 +27,32 @@ message RuntimeConfig {
 
   // Address of runtime.firstmoduledata.
   uint64 variable_runtime_dot_firstmoduledata = 9;
+  // Address of runtime.allgs.
+  uint64 variable_runtime_dot_allgs = 19;
+
   // Offset in runtime.moduledata of the types field.
   uint32 moduledata_types_offset = 10;
   // Offset in runtime.moduledata of the etypes field.
   uint32 moduledata_etypes_offset = 11;
   // Offset in runtime.moduledata of the text field.
   uint32 moduledata_text_offset = 14;
+  // Offset in runtime.moduledata of the bss field.
+  uint32 moduledata_bss_offset = 20;
+
+  // Virtual address of the bss section. Used to compute the actual address
+  // of variables that are in the bss section by resolving the actual
+  // address of the bss section by peeking into the runtime.moduledata.
+  uint64 bss_section_addr = 21;
 
   // The start pc of the stoptheworld.Dereference function.
   uint64 dereference_start_pc = 12;
   // The end pc of the stoptheworld.Dereference function.
   uint64 dereference_end_pc = 13;
+
+  // The start pc of the runtime.startTheWorld function.
+  uint64 start_the_world_start_addr = 17;
+  // The start pc of the runtime.stopTheWorld function.
+  uint64 stop_the_world_start_addr = 18;
 
   reserved 15;
 }

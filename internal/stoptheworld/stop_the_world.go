@@ -84,6 +84,8 @@ type signalState struct {
 	recoveryFrameBaseOffset uintptr
 
 	config *snapshotpb.RuntimeConfig
+
+	stopTheWorldAddr, startTheWorldAddr uintptr
 }
 
 func (s *signalState) setConfig(
@@ -93,12 +95,16 @@ func (s *signalState) setConfig(
 	s.config = config
 	s.dereferenceStart = uintptr(config.DereferenceStartPc) + base
 	s.dereferenceEnd = uintptr(config.DereferenceEndPc) + base
+	s.stopTheWorldAddr = uintptr(config.StopTheWorldStartAddr) + base
+	s.startTheWorldAddr = uintptr(config.StartTheWorldStartAddr) + base
 }
 
 func (s *signalState) clearConfig() {
 	s.config = nil
 	s.dereferenceStart = 0
 	s.dereferenceEnd = 0
+	s.stopTheWorldAddr = 0
+	s.startTheWorldAddr = 0
 }
 
 // Set the signal handler to one that can gracefully recover from a segfault

@@ -2,6 +2,7 @@ package snapshot
 
 import (
 	"fmt"
+	"runtime"
 	"sort"
 	"time"
 	"unsafe"
@@ -64,14 +65,30 @@ func (m *goRuntimeTypeResolver) ResolveTypeAddressToGoRuntimeTypeId(addr uint64)
 }
 
 func Snapshot(p *snapshotpb.SnapshotProgram) (*machinapb.SnapshotResponse, error) {
+	if !stoptheworld.GoVersionSupported() {
+		return nil, fmt.Errorf("go version %s not supported", runtime.Version())
+	}
+	if p.RuntimeConfig.StopTheWorldStartAddr == 0 ||
+		p.RuntimeConfig.StartTheWorldStartAddr == 0 {
+		return nil, fmt.Errorf("invalid runtime config: missing stoptheworld or starttheworld addresses")
+	}
 	b := newSnapshotter(p)
 	start := time.Now()
 	snapshotHeader, ok := b.out.writeSnapshotHeader()
 	if !ok {
 		return nil, fmt.Errorf("failed to write snapshot header")
 	}
+
+	var iteratorErr error
 	if !stoptheworld.StopTheWorld(p.RuntimeConfig, func() {
-		allgs.ForEach(p.RuntimeConfig, func(g allgs.Goroutine) {
+		md := moduledata.GetFirstmoduledata()
+		bssAddr := *(*uintptr)(unsafe.Pointer(uintptr(md) + uintptr(p.RuntimeConfig.ModuledataBssOffset)))
+		it, err := allgs.NewGoroutineIterator(p.RuntimeConfig, bssAddr)
+		if err != nil {
+			iteratorErr = err
+			return
+		}
+		it.Iterate(func(g allgs.Goroutine) {
 			before := b.out.Len()
 			b.snapshotGoroutine(snapshotHeader, g)
 			if b.out.full() {
@@ -87,6 +104,9 @@ func Snapshot(p *snapshotpb.SnapshotProgram) (*machinapb.SnapshotResponse, error
 		snapshotHeader.Statistics.PointerDurationNs = uint64(time.Since(afterStacks).Nanoseconds())
 	}) {
 		return nil, fmt.Errorf("failed to execute snapshot")
+	}
+	if iteratorErr != nil {
+		return nil, fmt.Errorf("failed to construct goroutine iterator: %w", iteratorErr)
 	}
 	snapshotHeader.DataByteLen = b.out.Len()
 	snapshotHeader.Statistics.TotalDurationNs = uint64(time.Since(start).Nanoseconds())

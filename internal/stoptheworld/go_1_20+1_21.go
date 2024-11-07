@@ -1,27 +1,41 @@
-//go:build go1.22 && !go1.23
+// Contains logic for stopping the world in Go 1.20 and 1.21.
+
+//go:build (go1.20 && !go1.21) || (go1.21 && !go1.22)
 
 package stoptheworld
 
 import (
-	_ "unsafe" // for go:linkname
+	"unsafe"
 )
 
-//go:linkname stopTheWorld runtime.stopTheWorld
-func stopTheWorld(reason stwReason) worldStop
+func GoVersionSupported() bool {
+	return true
+}
 
-//go:linkname startTheWorld runtime.startTheWorld
-func startTheWorld(ws worldStop)
+var (
+	stopTheWorldImpl  stopTheWorldFunc
+	startTheWorldImpl startTheWorldFunc
+)
+
+func stopTheWorld(reason stwReason) worldStop {
+	fPtr := (*uintptr)(unsafe.Pointer(&stopTheWorldImpl))
+	*fPtr = (uintptr)(unsafe.Pointer(&state.stopTheWorldAddr))
+	stopTheWorldImpl(reason)
+	return worldStop{}
+}
+
+func startTheWorld(ws worldStop) {
+	fPtr := (*uintptr)(unsafe.Pointer(&startTheWorldImpl))
+	*fPtr = (uintptr)(unsafe.Pointer(&state.startTheWorldAddr))
+	startTheWorldImpl()
+}
+
+type worldStop struct{}
 
 type stwReason int8
 
-//go:linkname stwReasonString (runtime.stwReason).String
-func stwReasonString(r stwReason)
-
-// https://github.com/golang/go/blob/3a842931/src/runtime/proc.go#L1310-L1315
-type worldStop struct {
-	reason stwReason
-	start  int64
-}
+type stopTheWorldFunc func(reason stwReason)
+type startTheWorldFunc func()
 
 const (
 	stwUnknown                     stwReason = iota // "unknown"

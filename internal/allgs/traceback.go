@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"sync/atomic"
 	"unsafe"
-	_ "unsafe"
 
 	"github.com/DataExMachina-dev/side-eye-go/internal/snapshotpb"
 )
@@ -16,18 +15,31 @@ type Goroutine struct {
 	config *snapshotpb.RuntimeConfig
 }
 
-// ForEach calls f for each goroutine.
-//
-// Note that the current implementation uses runtime.forEachG which acquires a runtime
-// lock. This means that the function f must not panic.
-func ForEach(cfg *snapshotpb.RuntimeConfig, f func(Goroutine)) {
-	forEachG(func(gPtr unsafe.Pointer) {
-		f(Goroutine{gPtr: gPtr, config: cfg})
-	})
+// GoroutineIterator iterates over all goroutines.
+type GoroutineIterator struct {
+	allGs unsafe.Pointer
+	cfg   *snapshotpb.RuntimeConfig
 }
 
-//go:linkname forEachG runtime.forEachGRace
-func forEachG(func(pointer unsafe.Pointer))
+// Iterate calls f for each goroutine.
+func (it GoroutineIterator) Iterate(f func(Goroutine)) {
+	allGs := *(*[]uintptr)(it.allGs)
+	for _, gPtr := range allGs {
+		f(Goroutine{gPtr: unsafe.Pointer(gPtr), config: it.cfg})
+	}
+}
+
+// NewGoroutineIterator creates a new GoroutineIterator given the actual address
+// of the bss section.
+func NewGoroutineIterator(cfg *snapshotpb.RuntimeConfig, bssAddr uintptr) (GoroutineIterator, error) {
+	if cfg.VariableRuntimeDotAllgs == 0 || cfg.BssSectionAddr == 0 ||
+		cfg.VariableRuntimeDotAllgs < cfg.BssSectionAddr {
+		return GoroutineIterator{}, fmt.Errorf("invalid runtime config: missing allgs or bss section address")
+	}
+	allGsBssOffset := cfg.VariableRuntimeDotAllgs - cfg.BssSectionAddr
+	allGs := unsafe.Pointer(bssAddr + uintptr(allGsBssOffset))
+	return GoroutineIterator{allGs: allGs, cfg: cfg}, nil
+}
 
 // Status is the status of a goroutine.
 type Status uint32
