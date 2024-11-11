@@ -60,6 +60,7 @@ const (
 	OpCodeDereferenceCFAOffset  OpCode = 19
 	OpCodeCopyFromRegister      OpCode = 20
 	OpCodeZeroFill              OpCode = 21
+	OpCodeSetPresenceBit        OpCode = 30
 	OpCodePrepareFrameData      OpCode = 22
 	OpCodeConcludeFrameData     OpCode = 25
 	PrepareEventData            OpCode = 24
@@ -127,6 +128,9 @@ type (
 	}
 	OpZeroFill struct {
 		ByteLen uint32
+	}
+	OpSetPresenceBit struct {
+		BitOffset uint32
 	}
 	OpPrepareFrameData struct {
 		ProgID      uint32
@@ -282,6 +286,13 @@ func (d *OpDecoder) DecodeZeroFill() OpZeroFill {
 		ByteLen: byteLen,
 	}
 }
+func (d *OpDecoder) DecodeSetPresenceBit() OpSetPresenceBit {
+	byteLen := binary.LittleEndian.Uint32(d.opBuf[d.pc:])
+	d.pc += 4
+	return OpSetPresenceBit{
+		BitOffset: byteLen,
+	}
+}
 func (d *OpDecoder) DecodePrepareFrameData() OpPrepareFrameData {
 	progID := binary.LittleEndian.Uint32(d.opBuf[d.pc:])
 	dataByteLen := binary.LittleEndian.Uint32(d.opBuf[d.pc+4:])
@@ -394,6 +405,9 @@ func (d *OpDecoder) PeekOp() Op {
 
 	case OpCodeZeroFill:
 		op = d.DecodeZeroFill()
+
+	case OpCodeSetPresenceBit:
+		op = d.DecodeSetPresenceBit()
 
 	case OpCodePrepareFrameData:
 		op = d.DecodePrepareFrameData()

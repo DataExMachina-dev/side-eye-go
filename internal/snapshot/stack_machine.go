@@ -18,6 +18,7 @@ type stackMachine struct {
 	cfa     uintptr
 	decoder OpDecoder
 
+	frameOffset uint32
 	frameHeader *framing.FrameHeader
 
 	goContextOffset         uint32
@@ -354,9 +355,15 @@ func (s *stackMachine) Run(
 			copyFromRegister := s.decoder.DecodeCopyFromRegister()
 			_ = copyFromRegister
 			s.b.Zero(s.offset, 8)
+
 		case OpCodeZeroFill:
 			zeroFill := s.decoder.DecodeZeroFill()
 			s.b.Zero(s.offset, zeroFill.ByteLen)
+
+		case OpCodeSetPresenceBit:
+			setPresenceBit := s.decoder.DecodeSetPresenceBit()
+			ptr := s.b.Ptr(s.frameOffset + setPresenceBit.BitOffset/8)
+			*(*uint8)(ptr) |= (1 << (setPresenceBit.BitOffset % 8))
 
 		case OpCodePrepareFrameData:
 			prepareFrameData := s.decoder.DecodePrepareFrameData()
@@ -371,6 +378,7 @@ func (s *stackMachine) Run(
 				return false
 			}
 			s.offset = offset
+			s.frameOffset = offset
 			s.frameHeader = frameHeader
 
 		case OpCodeConcludeFrameData:
