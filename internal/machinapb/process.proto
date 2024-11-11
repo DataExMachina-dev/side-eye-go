@@ -59,12 +59,10 @@ message Process {
   // Time when the process was started.
   google.protobuf.Timestamp start_time = 5;
 
-  // The binary hash of the process, if we have computed it.
+  // The binary hash of the process, if we have computed it, encoded as hex.
   //
   // It will not be computed for all processes, only those that are matched to a
   // program (see the `program` field).
-  //
-  // TODO: Define the format of the hash.
   string binary_hash = 6;
 
   // Unique fingerprint of the process.
