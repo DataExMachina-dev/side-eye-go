@@ -163,14 +163,12 @@ func (o *outBuf) writeQueueEntry(entry framing.QueueEntry) (dataOffset uint32, o
 		return 0, false
 	}
 	o.out = o.out[:newLen]
+	*(*framing.QueueEntry)(o.Ptr(headerOffset)) = entry
 	dataOffset = headerOffset + uint32(unsafe.Sizeof(framing.QueueEntry{}))
 	if !o.Dereference(dataOffset, uintptr(entry.Addr), entry.Len) {
-		// Dereference failed, so set the buffer length to the original.
-		o.out = o.out[:origLen]
+		(*framing.QueueEntry)(o.Ptr(headerOffset)).Type |= (1 << 31)
 		return 0, false
 	}
-	// Write the header after the outcome of the dereference is known.
-	*(*framing.QueueEntry)(o.Ptr(headerOffset)) = entry
 	return dataOffset, true
 }
 
