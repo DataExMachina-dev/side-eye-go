@@ -47,7 +47,9 @@ const (
 	OpCodeEnqueuePointer        OpCode = 6
 	OpCodeEnqueueSliceHeader    OpCode = 7
 	OpCodeEnqueueStringHeader   OpCode = 8
-	OpCodeEnqueueMapHeader      OpCode = 9
+	OpCodeEnqueueHMapHeader     OpCode = 9
+	OpCodeEnqueueSwissMap       OpCode = 31
+	OpCodeEnqueueSwissMapGroups OpCode = 32
 	OpCodeJump                  OpCode = 10
 	OpCodePop                   OpCode = 11
 	OpCodePushImm               OpCode = 12
@@ -90,13 +92,25 @@ type (
 	OpEnqueueStringHeader struct {
 		StringDataType uint32
 	}
-	OpEnqueueMapHeader struct {
+	OpEnqueueHMapHeader struct {
 		BucketsArrayType uint32
 		BucketByteLen    uint32
 		FlagsOffset      uint8
 		BOffset          uint8
 		BucketsOffset    uint8
 		OldBucketsOffset uint8
+	}
+	OpEnqueueSwissMap struct {
+		TablePtrSliceType uint32
+		GroupType         uint32
+		DirPtrOffset      uint8
+		DirLenOffset      uint8
+	}
+	OpEnqueueSwissMapGroups struct {
+		GroupSliceType   uint32
+		GroupByteLen     uint32
+		DataOffset       uint8
+		LengthMaskOffset uint8
 	}
 	OpJump struct {
 		Pc uint32
@@ -200,8 +214,8 @@ func (d *OpDecoder) DecodeEnqueueStringHeader() OpEnqueueStringHeader {
 		StringDataType: stringDataType,
 	}
 }
-func (d *OpDecoder) DecodeEnqueueMapHeader() OpEnqueueMapHeader {
-	op := OpEnqueueMapHeader{
+func (d *OpDecoder) DecodeEnqueueHMapHeader() OpEnqueueHMapHeader {
+	op := OpEnqueueHMapHeader{
 		BucketsArrayType: binary.LittleEndian.Uint32(d.opBuf[d.pc:]),
 		BucketByteLen:    binary.LittleEndian.Uint32(d.opBuf[d.pc+4:]),
 		FlagsOffset:      d.opBuf[d.pc+8],
@@ -210,6 +224,26 @@ func (d *OpDecoder) DecodeEnqueueMapHeader() OpEnqueueMapHeader {
 		OldBucketsOffset: d.opBuf[d.pc+11],
 	}
 	d.pc += 12
+	return op
+}
+func (d *OpDecoder) DecodeEnqueueSwissMap() OpEnqueueSwissMap {
+	op := OpEnqueueSwissMap{
+		TablePtrSliceType: binary.LittleEndian.Uint32(d.opBuf[d.pc:]),
+		GroupType:         binary.LittleEndian.Uint32(d.opBuf[d.pc+4:]),
+		DirPtrOffset:      d.opBuf[d.pc+8],
+		DirLenOffset:      d.opBuf[d.pc+9],
+	}
+	d.pc += 10
+	return op
+}
+func (d *OpDecoder) DecodeEnqueueSwissMapGroups() OpEnqueueSwissMapGroups {
+	op := OpEnqueueSwissMapGroups{
+		GroupSliceType:   binary.LittleEndian.Uint32(d.opBuf[d.pc:]),
+		GroupByteLen:     binary.LittleEndian.Uint32(d.opBuf[d.pc+4:]),
+		DataOffset:       d.opBuf[d.pc+8],
+		LengthMaskOffset: d.opBuf[d.pc+9],
+	}
+	d.pc += 10
 	return op
 }
 func (d *OpDecoder) DecodeJump() OpJump {
@@ -367,8 +401,14 @@ func (d *OpDecoder) PeekOp() Op {
 	case OpCodeEnqueueStringHeader:
 		op = d.DecodeEnqueueStringHeader()
 
-	case OpCodeEnqueueMapHeader:
-		op = d.DecodeEnqueueMapHeader()
+	case OpCodeEnqueueHMapHeader:
+		op = d.DecodeEnqueueHMapHeader()
+
+	case OpCodeEnqueueSwissMap:
+		op = d.DecodeEnqueueSwissMap()
+
+	case OpCodeEnqueueSwissMapGroups:
+		op = d.DecodeEnqueueSwissMapGroups()
 
 	case OpCodeJump:
 		op = d.DecodeJump()

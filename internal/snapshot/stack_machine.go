@@ -275,11 +275,11 @@ func (s *stackMachine) Run(
 				s.q.Push(addr, enqueueStringHeader.StringDataType, uint32(len))
 			}
 
-		case OpCodeEnqueueMapHeader:
+		case OpCodeEnqueueHMapHeader:
 			// We enqueue new and old buckets at once, no need to loop (unlike ebpf probe).
 			s.stack[len(s.stack)-1] = 0
 
-			enqueueMapHeader := s.decoder.DecodeEnqueueMapHeader()
+			enqueueMapHeader := s.decoder.DecodeEnqueueHMapHeader()
 			// https://github.com/golang/go/blob/8d04110c/src/runtime/map.go#L105
 			const sameSizeGrow uint8 = 8
 			flags := *(*uint8)(s.b.Ptr(s.offset + uint32(enqueueMapHeader.FlagsOffset)))
@@ -300,6 +300,22 @@ func (s *stackMachine) Run(
 				oldBucketsSize := numBuckets * uint32(enqueueMapHeader.BucketByteLen)
 				s.q.Push(oldBucketsAddr, enqueueMapHeader.BucketsArrayType, oldBucketsSize)
 			}
+
+		case OpCodeEnqueueSwissMap:
+			p := s.decoder.DecodeEnqueueSwissMap()
+			dirPtr := *(*uintptr)(s.b.Ptr(s.offset + uint32(p.DirPtrOffset)))
+			dirLen := *(*int64)(s.b.Ptr(s.offset + uint32(p.DirLenOffset)))
+			if dirLen > 0 {
+				s.q.Push(dirPtr, p.TablePtrSliceType, uint32(8*dirLen))
+			} else {
+				s.q.Push(dirPtr, p.GroupType, 0)
+			}
+
+		case OpCodeEnqueueSwissMapGroups:
+			p := s.decoder.DecodeEnqueueSwissMapGroups()
+			data := *(*uintptr)(s.b.Ptr(s.offset + uint32(p.DataOffset)))
+			lengthMask := *(*uint64)(s.b.Ptr(s.offset + uint32(p.LengthMaskOffset)))
+			s.q.Push(data, p.GroupSliceType, p.GroupByteLen*(uint32(lengthMask)+1))
 
 		case OpCodeJump:
 			jump := s.decoder.DecodeJump()

@@ -18,7 +18,9 @@ func _() {
 	_ = x[OpCodeEnqueuePointer-6]
 	_ = x[OpCodeEnqueueSliceHeader-7]
 	_ = x[OpCodeEnqueueStringHeader-8]
-	_ = x[OpCodeEnqueueMapHeader-9]
+	_ = x[OpCodeEnqueueHMapHeader-9]
+	_ = x[OpCodeEnqueueSwissMap-31]
+	_ = x[OpCodeEnqueueSwissMapGroups-32]
 	_ = x[OpCodeJump-10]
 	_ = x[OpCodePop-11]
 	_ = x[OpCodePushImm-12]
@@ -31,6 +33,7 @@ func _() {
 	_ = x[OpCodeDereferenceCFAOffset-19]
 	_ = x[OpCodeCopyFromRegister-20]
 	_ = x[OpCodeZeroFill-21]
+	_ = x[OpCodeSetPresenceBit-30]
 	_ = x[OpCodePrepareFrameData-22]
 	_ = x[OpCodeConcludeFrameData-25]
 	_ = x[PrepareEventData-24]
@@ -40,9 +43,9 @@ func _() {
 	_ = x[OpCodeIllegal-23]
 }
 
-const _OpCode_name = "OpCodeInvalidOpCodeCallOpCodeCondJumpOpCodeDecrementOpCodeEnqueueEmptyInterfaceOpCodeEnqueueInterfaceOpCodeEnqueuePointerOpCodeEnqueueSliceHeaderOpCodeEnqueueStringHeaderOpCodeEnqueueMapHeaderOpCodeJumpOpCodePopOpCodePushImmOpCodePushOffsetOpCodePushSliceLenOpCodeReturnOpCodeSetOffsetOpCodeShiftOffsetOpCodeEnqueueBiasedPointerOpCodeDereferenceCFAOffsetOpCodeCopyFromRegisterOpCodeZeroFillOpCodePrepareFrameDataOpCodeIllegalPrepareEventDataOpCodeConcludeFrameDataOpCodeChasePointersOpCodePrepareGoContextOpCodeTraverseGoContextOpCodeConcludeGoContext"
+const _OpCode_name = "OpCodeInvalidOpCodeCallOpCodeCondJumpOpCodeDecrementOpCodeEnqueueEmptyInterfaceOpCodeEnqueueInterfaceOpCodeEnqueuePointerOpCodeEnqueueSliceHeaderOpCodeEnqueueStringHeaderOpCodeEnqueueHMapHeaderOpCodeJumpOpCodePopOpCodePushImmOpCodePushOffsetOpCodePushSliceLenOpCodeReturnOpCodeSetOffsetOpCodeShiftOffsetOpCodeEnqueueBiasedPointerOpCodeDereferenceCFAOffsetOpCodeCopyFromRegisterOpCodeZeroFillOpCodePrepareFrameDataOpCodeIllegalPrepareEventDataOpCodeConcludeFrameDataOpCodeChasePointersOpCodePrepareGoContextOpCodeTraverseGoContextOpCodeConcludeGoContextOpCodeSetPresenceBitOpCodeEnqueueSwissMapOpCodeEnqueueSwissMapGroups"
 
-var _OpCode_index = [...]uint16{0, 13, 23, 37, 52, 79, 101, 121, 145, 170, 192, 202, 211, 224, 240, 258, 270, 285, 302, 328, 354, 376, 390, 412, 425, 441, 464, 483, 505, 528, 551}
+var _OpCode_index = [...]uint16{0, 13, 23, 37, 52, 79, 101, 121, 145, 170, 193, 203, 212, 225, 241, 259, 271, 286, 303, 329, 355, 377, 391, 413, 426, 442, 465, 484, 506, 529, 552, 572, 593, 620}
 
 func (i OpCode) String() string {
 	if i >= OpCode(len(_OpCode_index)-1) {
