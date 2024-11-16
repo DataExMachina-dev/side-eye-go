@@ -21,6 +21,7 @@ func _() {
 	_ = x[OpCodeEnqueueHMapHeader-9]
 	_ = x[OpCodeEnqueueSwissMap-31]
 	_ = x[OpCodeEnqueueSwissMapGroups-32]
+	_ = x[OpCodeEnqueueSubroutine-33]
 	_ = x[OpCodeJump-10]
 	_ = x[OpCodePop-11]
 	_ = x[OpCodePushImm-12]
@@ -43,9 +44,9 @@ func _() {
 	_ = x[OpCodeIllegal-23]
 }
 
-const _OpCode_name = "OpCodeInvalidOpCodeCallOpCodeCondJumpOpCodeDecrementOpCodeEnqueueEmptyInterfaceOpCodeEnqueueInterfaceOpCodeEnqueuePointerOpCodeEnqueueSliceHeaderOpCodeEnqueueStringHeaderOpCodeEnqueueHMapHeaderOpCodeJumpOpCodePopOpCodePushImmOpCodePushOffsetOpCodePushSliceLenOpCodeReturnOpCodeSetOffsetOpCodeShiftOffsetOpCodeEnqueueBiasedPointerOpCodeDereferenceCFAOffsetOpCodeCopyFromRegisterOpCodeZeroFillOpCodePrepareFrameDataOpCodeIllegalPrepareEventDataOpCodeConcludeFrameDataOpCodeChasePointersOpCodePrepareGoContextOpCodeTraverseGoContextOpCodeConcludeGoContextOpCodeSetPresenceBitOpCodeEnqueueSwissMapOpCodeEnqueueSwissMapGroups"
+const _OpCode_name = "OpCodeInvalidOpCodeCallOpCodeCondJumpOpCodeDecrementOpCodeEnqueueEmptyInterfaceOpCodeEnqueueInterfaceOpCodeEnqueuePointerOpCodeEnqueueSliceHeaderOpCodeEnqueueStringHeaderOpCodeEnqueueHMapHeaderOpCodeJumpOpCodePopOpCodePushImmOpCodePushOffsetOpCodePushSliceLenOpCodeReturnOpCodeSetOffsetOpCodeShiftOffsetOpCodeEnqueueBiasedPointerOpCodeDereferenceCFAOffsetOpCodeCopyFromRegisterOpCodeZeroFillOpCodePrepareFrameDataOpCodeIllegalPrepareEventDataOpCodeConcludeFrameDataOpCodeChasePointersOpCodePrepareGoContextOpCodeTraverseGoContextOpCodeConcludeGoContextOpCodeSetPresenceBitOpCodeEnqueueSwissMapOpCodeEnqueueSwissMapGroupsOpCodeEnqueueSubroutine"
 
-var _OpCode_index = [...]uint16{0, 13, 23, 37, 52, 79, 101, 121, 145, 170, 193, 203, 212, 225, 241, 259, 271, 286, 303, 329, 355, 377, 391, 413, 426, 442, 465, 484, 506, 529, 552, 572, 593, 620}
+var _OpCode_index = [...]uint16{0, 13, 23, 37, 52, 79, 101, 121, 145, 170, 193, 203, 212, 225, 241, 259, 271, 286, 303, 329, 355, 377, 391, 413, 426, 442, 465, 484, 506, 529, 552, 572, 593, 620, 643}
 
 func (i OpCode) String() string {
 	if i >= OpCode(len(_OpCode_index)-1) {

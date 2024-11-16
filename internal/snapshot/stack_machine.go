@@ -1,6 +1,7 @@
 package snapshot
 
 import (
+	"sort"
 	"unsafe"
 
 	"github.com/DataExMachina-dev/side-eye-go/internal/framing"
@@ -316,6 +317,34 @@ func (s *stackMachine) Run(
 			data := *(*uintptr)(s.b.Ptr(s.offset + uint32(p.DataOffset)))
 			lengthMask := *(*uint64)(s.b.Ptr(s.offset + uint32(p.LengthMaskOffset)))
 			s.q.Push(data, p.GroupSliceType, p.GroupByteLen*(uint32(lengthMask)+1))
+
+		case OpCodeEnqueueSubroutine:
+			_ = s.decoder.DecodeEnqueueSubroutine()
+			truncateTarget := s.b.Len()
+			// First serialize as "unknown subroutine" that just
+			// captures the entry pc.
+			addr := *(*uint64)(s.b.Ptr(s.offset))
+			entry := framing.QueueEntry{
+				Type: s.p.SubroutineClassifier.UnknownSubroutineType,
+				Len:  8,
+				Addr: addr,
+			}
+			offset, ok := s.b.writeQueueEntry(entry)
+			if !ok {
+				break
+			}
+			entry_pc := *(*uint64)(s.b.Ptr(offset))
+			i := sort.Search(len(s.p.SubroutineClassifier.EntryPc),
+				func(i int) bool {
+					return entry_pc <= s.p.SubroutineClassifier.EntryPc[i]
+				})
+			if i < len(s.p.SubroutineClassifier.EntryPc) &&
+				s.p.SubroutineClassifier.EntryPc[i] == entry_pc {
+				// We know the actual subroutine type. Drop the
+				// previously serialized message.
+				s.b.truncate(truncateTarget)
+				s.q.Push(uintptr(addr), s.p.SubroutineClassifier.Type[i], 0)
+			}
 
 		case OpCodeJump:
 			jump := s.decoder.DecodeJump()

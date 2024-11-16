@@ -50,6 +50,7 @@ const (
 	OpCodeEnqueueHMapHeader     OpCode = 9
 	OpCodeEnqueueSwissMap       OpCode = 31
 	OpCodeEnqueueSwissMapGroups OpCode = 32
+	OpCodeEnqueueSubroutine     OpCode = 33
 	OpCodeJump                  OpCode = 10
 	OpCodePop                   OpCode = 11
 	OpCodePushImm               OpCode = 12
@@ -112,7 +113,8 @@ type (
 		DataOffset       uint8
 		LengthMaskOffset uint8
 	}
-	OpJump struct {
+	OpEnqueueSubroutine struct{}
+	OpJump              struct {
 		Pc uint32
 	}
 	OpPop     struct{}
@@ -245,6 +247,9 @@ func (d *OpDecoder) DecodeEnqueueSwissMapGroups() OpEnqueueSwissMapGroups {
 	}
 	d.pc += 10
 	return op
+}
+func (d *OpDecoder) DecodeEnqueueSubroutine() OpEnqueueSubroutine {
+	return OpEnqueueSubroutine{}
 }
 func (d *OpDecoder) DecodeJump() OpJump {
 	pc := binary.LittleEndian.Uint32(d.opBuf[d.pc:])
