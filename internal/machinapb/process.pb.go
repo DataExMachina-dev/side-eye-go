@@ -230,12 +230,10 @@ type Process struct {
 	Env []string `protobuf:"bytes,4,rep,name=env,proto3" json:"env,omitempty"`
 	// Time when the process was started.
 	StartTime *timestamppb.Timestamp `protobuf:"bytes,5,opt,name=start_time,json=startTime,proto3" json:"start_time,omitempty"`
-	// The binary hash of the process, if we have computed it.
+	// The binary hash of the process, if we have computed it, encoded as hex.
 	//
 	// It will not be computed for all processes, only those that are matched to a
 	// program (see the `program` field).
-	//
-	// TODO: Define the format of the hash.
 	BinaryHash string `protobuf:"bytes,6,opt,name=binary_hash,json=binaryHash,proto3" json:"binary_hash,omitempty"`
 	// Unique fingerprint of the process.
 	Fingerprint string `protobuf:"bytes,7,opt,name=fingerprint,proto3" json:"fingerprint,omitempty"`

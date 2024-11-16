@@ -65,6 +65,12 @@ message PcClassifier {
   repeated uint32 prog_pc = 2;
 }
 
+message SubroutineClassifier {
+  uint32 unknown_subroutine_type = 3;
+  repeated uint64 entry_pc = 1;
+  repeated uint32 type = 2;
+}
+
 // Describes a type that implements go context.Context.
 message GoContextImpl {
   optional uint32 context_offset = 1;
@@ -94,6 +100,7 @@ message TypeInfo {
 message SnapshotProgram {
   RuntimeConfig runtime_config = 1;
   PcClassifier pc_classifier = 2;
+  SubroutineClassifier subroutine_classifier = 6;
   map<uint64, uint32> go_runtime_type_to_type_id = 3;
   map<uint32, TypeInfo> type_info = 4;
   bytes prog = 5;
