@@ -66,7 +66,7 @@ message PcClassifier {
 }
 
 message SubroutineClassifier {
-  uint32 unknown_subroutine_type = 3;
+  uint32 unresolved_subroutine_type = 3;
   repeated uint64 entry_pc = 1;
   repeated uint32 type = 2;
 }

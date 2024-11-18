@@ -325,7 +325,7 @@ func (s *stackMachine) Run(
 			// captures the entry pc.
 			addr := *(*uint64)(s.b.Ptr(s.offset))
 			entry := framing.QueueEntry{
-				Type: s.p.SubroutineClassifier.UnknownSubroutineType,
+				Type: s.p.SubroutineClassifier.UnresolvedSubroutineType,
 				Len:  8,
 				Addr: addr,
 			}
