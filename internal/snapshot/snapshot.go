@@ -167,7 +167,7 @@ func (s *snapshotter) snapshotGoroutine(snapshotHeader *framing.SnapshotHeader, 
 	// 1.23, the syscall base pointer is not recorded. Some degree of unwinding
 	// is needed.
 	pcs, fps := s.unwinder.walkStack(g.PC(), g.BP(), g.Stktopsp())
-	stackHash := murmur2(pcs, 0)
+	stackHash := murmur2(pcs, 0 /* seed */)
 	goroutineHeader, ok := s.out.writeGoroutineHeader()
 	if !ok {
 		return
@@ -260,6 +260,11 @@ func (r *typeIdResolver) ResolveGoRuntimeTypeToTypeId(addr uint64) uint32 {
 	return r.types[addr]
 }
 
+// murmur2 hashes a stack of program counters. For getting the same hash value
+// for a stack as the Side-Eye agent would, the programs counters should
+// correspond to the stack frames in leaf to root order, and the seed should be
+// 0.
+//
 // Below code taken and lightly modified from
 // https://github.com/parca-dev/parca-agent/blob/aa9289b868/bpf/unwinders/hash.h
 //

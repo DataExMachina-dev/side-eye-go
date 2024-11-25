@@ -27,6 +27,8 @@ func newUnwinder(base uintptr) *unwinder {
 	return uw
 }
 
+// walkStack returns the stack as a list of program counters, going from leaf to
+// root.
 func (b *unwinder) walkStack(pc uintptr, fp unsafe.Pointer, stackTopSP uintptr) (pcs []uintptr, cfa []uintptr) {
 	b.pcBuf[0] = pc
 	b.fpBuf[0] = uintptr(fp)
