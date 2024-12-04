@@ -34,8 +34,6 @@ type QueueEntry struct {
 }
 
 type FrameHeader struct {
-	Depth       uint32
 	DataByteLen uint32
-	ProgID      uint32
 	_           uint32
 }
