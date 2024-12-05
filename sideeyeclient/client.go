@@ -85,12 +85,17 @@ func (w WithApiTokenFromEnv) apply(opts *sideEyeClientOpts) error {
 
 type SnapshotResult = apiclient.SnapshotResult
 
+type NoProcessesError = apiclient.NoProcessesError
+type NoAgentsError = apiclient.NoAgentsError
+type EnvMissingError = apiclient.EnvMissingError
+type BinaryStrippedError = apiclient.BinaryStrippedError
+
 // CaptureSnapshot captures a snapshot of all the monitored processes in the
 // requested environment. If envName is empty, it refers to all the processes
 // reported by agents not configured with an environment.
 //
 // Besides generic errors, CaptureSnapshot can return NoAgentsError,
-// EnvMissingError or NoProcessesError.
+// EnvMissingError, NoProcessesError or BinaryStrippedError.
 func (c *SideEyeClient) CaptureSnapshot(
 	ctx context.Context, envName string,
 ) (SnapshotResult, error) {
