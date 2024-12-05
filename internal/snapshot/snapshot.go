@@ -2,7 +2,6 @@ package snapshot
 
 import (
 	"fmt"
-	"runtime"
 	"sort"
 	"time"
 	"unsafe"
@@ -65,9 +64,10 @@ func (m *goRuntimeTypeResolver) ResolveTypeAddressToGoRuntimeTypeId(addr uint64)
 }
 
 func Snapshot(p *snapshotpb.SnapshotProgram) (*machinapb.SnapshotResponse, error) {
-	if !stoptheworld.GoVersionSupported() {
-		return nil, fmt.Errorf("go version %s not supported", runtime.Version())
+	if err := stoptheworld.PlatformSupported(); err != nil {
+		return nil, err
 	}
+
 	if p.RuntimeConfig.StopTheWorldStartAddr == 0 ||
 		p.RuntimeConfig.StartTheWorldStartAddr == 0 {
 		return nil, fmt.Errorf("invalid runtime config: missing stoptheworld or starttheworld addresses")

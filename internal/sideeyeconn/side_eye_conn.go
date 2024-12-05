@@ -7,6 +7,7 @@ import (
 	"github.com/DataExMachina-dev/side-eye-go/internal/machinapb"
 	"github.com/DataExMachina-dev/side-eye-go/internal/server"
 	"github.com/DataExMachina-dev/side-eye-go/internal/serverdial"
+	"github.com/DataExMachina-dev/side-eye-go/internal/stoptheworld"
 	"github.com/google/uuid"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
@@ -110,6 +111,10 @@ func (c *SideEyeConn) Connect(
 	cfg Config,
 	ephemeralProcess bool,
 ) error {
+	if err := stoptheworld.PlatformSupported(); err != nil {
+		return err
+	}
+
 	// If we were already connected, terminate that connection.
 	c.Close()
 

@@ -16,3 +16,9 @@ type sigaction struct {
 	prevSigsegv usigactiont
 	prevSigbus  usigactiont
 }
+
+// OsArchSupported returns whether the combination of OS and architecture are
+// supported.
+func OsArchSupported() bool {
+	return true
+}

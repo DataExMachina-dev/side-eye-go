@@ -8,6 +8,7 @@ import (
 	"github.com/DataExMachina-dev/side-eye-go/internal/apiclient"
 	"github.com/DataExMachina-dev/side-eye-go/internal/apipb"
 	"github.com/DataExMachina-dev/side-eye-go/internal/sideeyeconn"
+	"github.com/DataExMachina-dev/side-eye-go/internal/stoptheworld"
 )
 
 // ENV_AGENT_URL is the environment variable that overrides the URL to which
@@ -85,6 +86,10 @@ func Init(
 	for _, opt := range opts {
 		opt.apply(&cfg)
 	}
+
+	if err := stoptheworld.PlatformSupported(); err != nil {
+		return err
+	}
 	if err := singletonConn.Connect(ctx, cfg, false /* ephemeralProcess */); err != nil {
 		return fmt.Errorf("failed to connect to Side-Eye: %w", err)
 	}
@@ -120,6 +125,10 @@ var singletonConn = sideeyeconn.NewSideEyeConn()
 func CaptureSelfSnapshot(
 	ctx context.Context, programName string, opts ...Option,
 ) (string, error) {
+	if err := stoptheworld.PlatformSupported(); err != nil {
+		return "", err
+	}
+
 	// Connect to the Side-Eye service as a monitored process in "ephemeral" mode.
 	cfg := makeConfig(programName, opts...)
 	conn := sideeyeconn.NewSideEyeConn()

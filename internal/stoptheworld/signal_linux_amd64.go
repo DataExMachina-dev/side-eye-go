@@ -8,3 +8,9 @@ package stoptheworld
 const saFlags = _SA_ONSTACK | _SA_SIGINFO | _SA_NODEFER | _SA_RESTORER
 
 type sigaction = sigactiont
+
+// OsArchSupported returns whether the combination of OS and architecture are
+// supported.
+func OsArchSupported() bool {
+	return true
+}
