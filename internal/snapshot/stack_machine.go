@@ -399,7 +399,7 @@ func (s *stackMachine) Run(
 		case OpCodeCopyFromRegister:
 			copyFromRegister := s.decoder.DecodeCopyFromRegister()
 			_ = copyFromRegister
-			s.b.Zero(s.offset, 8)
+			s.b.Zero(s.offset, uint32(copyFromRegister.ByteSize))
 
 		case OpCodeZeroFill:
 			zeroFill := s.decoder.DecodeZeroFill()

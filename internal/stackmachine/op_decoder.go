@@ -141,6 +141,7 @@ type (
 	}
 	OpCopyFromRegister struct {
 		Register uint16
+		ByteSize uint8
 	}
 	OpZeroFill struct {
 		ByteLen uint32
@@ -313,9 +314,11 @@ func (d *OpDecoder) DecodeDereferenceCFAOffset() OpDereferenceCFAOffset {
 }
 func (d *OpDecoder) DecodeCopyFromRegister() OpCopyFromRegister {
 	register := binary.LittleEndian.Uint16(d.opBuf[d.pc:])
-	d.pc += 2
+	byteSize := uint8(d.opBuf[d.pc+2])
+	d.pc += 3
 	return OpCopyFromRegister{
 		Register: register,
+		ByteSize: byteSize,
 	}
 }
 func (d *OpDecoder) DecodeZeroFill() OpZeroFill {
