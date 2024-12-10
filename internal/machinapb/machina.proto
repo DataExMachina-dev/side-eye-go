@@ -95,7 +95,11 @@ message EventsResponse {
     uint32 events_rejected_in_ebpf = 3;
   }
 
-  message Detached { SummaryStatistics summary_statistics = 1; }
+  message Detached {
+    SummaryStatistics summary_statistics = 1;
+    // The timestamp of the detached event.
+    uint64 detached_timestamp_monotonic_ns = 2;
+  }
 
   oneof response {
     Event event = 1;
