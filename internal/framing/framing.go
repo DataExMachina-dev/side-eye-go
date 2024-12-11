@@ -18,7 +18,7 @@ type Statistics struct {
 }
 
 type GoroutineHeader struct {
-	Goid           int64
+	Goid           uint64
 	StackHash      uint64
 	Status         uint32
 	WaitReason     uint8

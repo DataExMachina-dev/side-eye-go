@@ -68,8 +68,8 @@ func (g Goroutine) SyscallPC() uintptr {
 }
 
 // Goid returns the ID of the goroutine.
-func (g Goroutine) Goid() int64 {
-	return *(*int64)(unsafe.Pointer(uintptr(g.gPtr) + uintptr(g.config.GGoidOffset)))
+func (g Goroutine) Goid() uint64 {
+	return *(*uint64)(unsafe.Pointer(uintptr(g.gPtr) + uintptr(g.config.GGoidOffset)))
 }
 
 // Status returns the status of the goroutine.
