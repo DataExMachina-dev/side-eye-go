@@ -133,7 +133,7 @@ func (s *Server) Snapshot(stream machinapb.Machina_SnapshotServer) (err error) {
 	if !ok {
 		return fmt.Errorf("expected SnapshotRequest_Setup_ but got %T", msg.Request)
 	}
-	req, err := s.fetcher.FetchSnapshotProgram(ctx, setupReq.Setup.Key)
+	snapshotProgram, err := s.fetcher.FetchSnapshotProgram(ctx, setupReq.Setup.Key)
 	if err != nil {
 		return fmt.Errorf("failed to fetch snapshot program: %w", err)
 	}
@@ -147,7 +147,7 @@ func (s *Server) Snapshot(stream machinapb.Machina_SnapshotServer) (err error) {
 	if _, ok := msg.Request.(*machinapb.SnapshotRequest_Snapshot_); !ok {
 		return fmt.Errorf("expected SnapshotRequest_Snapshot_ but got %T", msg.Request)
 	}
-	output, err := snapshot.Snapshot(req)
+	output, err := snapshot.Snapshot(snapshotProgram)
 	if err != nil {
 		return status.Errorf(codes.Internal, "failed to snapshot: %v", err)
 	}
