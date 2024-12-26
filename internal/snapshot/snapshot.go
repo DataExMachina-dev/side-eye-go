@@ -99,7 +99,9 @@ func Snapshot(p *snapshotpb.SnapshotProgram) (*machinapb.SnapshotResponse, error
 		afterStacks := time.Now()
 		snapshotHeader.Statistics.StacksDurationNs = uint64(afterStacks.Sub(start).Nanoseconds())
 		snapshotHeader.GoroutinesByteLen = b.out.Len() - uint32(unsafe.Sizeof(framing.SnapshotHeader{}))
-
+		for _, v := range p.RuntimeConfig.StaticVariables {
+			b.queue.Push(uintptr(v.Address), v.Type, 0)
+		}
 		b.processQueue()
 		snapshotHeader.Statistics.PointerDurationNs = uint64(time.Since(afterStacks).Nanoseconds())
 	}) {

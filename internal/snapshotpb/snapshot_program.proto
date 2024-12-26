@@ -47,6 +47,12 @@ message RuntimeConfig {
   // object file.
   uint64 go_runtime_bss_address = 21;
 
+  message StaticVariable {
+    uint32 type = 1;
+    uint64 address = 2;
+  }
+  repeated StaticVariable static_variables = 22;
+
   // The start pc of the stoptheworld.Dereference function.
   uint64 dereference_start_pc = 12;
   // The end pc of the stoptheworld.Dereference function.
