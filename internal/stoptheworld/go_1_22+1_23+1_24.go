@@ -1,4 +1,4 @@
-//go:build (go1.22 && !go1.23) || (go1.23 && !go1.24)
+//go:build (go1.22 && !go1.23) || (go1.23 && !go1.24) || (go1.24 && !go1.25)
 
 package stoptheworld
 
