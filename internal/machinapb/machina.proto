@@ -132,6 +132,9 @@ message MachinaInfoResponse {
   // The version of the machina.
   string version = 4;
 
+  // The version of the kernel in "{major}.{minor}.{patch}" format.
+  string kernel_version = 8;
+
   // The token of the tenant to which this machina belongs.
   //
   // TODO: Define any structure for this token. For now it's opaque and will
