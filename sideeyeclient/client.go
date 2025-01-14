@@ -103,6 +103,11 @@ func (c *SideEyeClient) CaptureSnapshot(
 	return c.client.CaptureSnapshot(ctx, request)
 }
 
+func (c *SideEyeClient) DeleteRecording(ctx context.Context, recordingID int) error {
+	request := &apipb.DeleteRecordingRequest{RecordingId: int64(recordingID)}
+	return c.client.DeleteRecording(ctx, request)
+}
+
 // RecordingsURL returns the URL of the Side-Eye app's recordings page. If an
 // environment is specified, the URL will point to a view filtered to that
 // environment's snapshots. If environment is empty, the URL will point to all

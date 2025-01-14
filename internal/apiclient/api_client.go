@@ -74,6 +74,7 @@ func (c *APIClient) Close() {
 
 // SnapshotResult describes the result of a successful snapshot capture.
 type SnapshotResult struct {
+	RecordingID int
 	// SnapshotURL is the URL at which the snapshot can be accessed.
 	SnapshotURL string
 	// ProcessErrors, if not empty, contains info on the processes that Side-Eye
@@ -120,6 +121,7 @@ func (c *APIClient) CaptureSnapshot(
 
 	// Convert the gRPC response into our format.
 	snapRes := SnapshotResult{
+		RecordingID: int(res.RecordingId),
 		SnapshotURL: res.SnapshotUrl,
 	}
 	for _, pe := range res.Errors {
@@ -131,6 +133,25 @@ func (c *APIClient) CaptureSnapshot(
 		})
 	}
 	return snapRes, nil
+}
+
+func (c *APIClient) DeleteRecording(
+	ctx context.Context, req *apipb.DeleteRecordingRequest,
+) error {
+	if c.apiToken != "" {
+		ctx = metadata.AppendToOutgoingContext(ctx, "api-token", c.apiToken)
+	}
+	_, err := c.client.DeleteRecording(ctx, req)
+	if err != nil {
+		// Recognize some error details and turn them into typed errors.
+		s, _ := status.FromError(err)
+		switch s.Code() {
+		case codes.Unavailable:
+			return fmt.Errorf("failed to connect to Side-Eye API service: %w", err)
+		}
+		return err
+	}
+	return nil
 }
 
 // ProcessError describes an error that occurred while capturing a snapshot for

@@ -23,6 +23,8 @@ type ApiServiceClient interface {
 	// an error containing SnapshotError as a detail. If at least one process
 	// snapshot is successful, the RPC is successful.
 	CaptureSnapshot(ctx context.Context, in *CaptureSnapshotRequest, opts ...grpc.CallOption) (*CaptureSnapshotResponse, error)
+	// DeleteRecording deletes the recording with the specified id.
+	DeleteRecording(ctx context.Context, in *DeleteRecordingRequest, opts ...grpc.CallOption) (*DeleteRecordingResponse, error)
 }
 
 type apiServiceClient struct {
@@ -42,6 +44,15 @@ func (c *apiServiceClient) CaptureSnapshot(ctx context.Context, in *CaptureSnaps
 	return out, nil
 }
 
+func (c *apiServiceClient) DeleteRecording(ctx context.Context, in *DeleteRecordingRequest, opts ...grpc.CallOption) (*DeleteRecordingResponse, error) {
+	out := new(DeleteRecordingResponse)
+	err := c.cc.Invoke(ctx, "/api.ApiService/DeleteRecording", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // ApiServiceServer is the server API for ApiService service.
 // All implementations must embed UnimplementedApiServiceServer
 // for forward compatibility
@@ -51,6 +62,8 @@ type ApiServiceServer interface {
 	// an error containing SnapshotError as a detail. If at least one process
 	// snapshot is successful, the RPC is successful.
 	CaptureSnapshot(context.Context, *CaptureSnapshotRequest) (*CaptureSnapshotResponse, error)
+	// DeleteRecording deletes the recording with the specified id.
+	DeleteRecording(context.Context, *DeleteRecordingRequest) (*DeleteRecordingResponse, error)
 	mustEmbedUnimplementedApiServiceServer()
 }
 
@@ -60,6 +73,9 @@ type UnimplementedApiServiceServer struct {
 
 func (UnimplementedApiServiceServer) CaptureSnapshot(context.Context, *CaptureSnapshotRequest) (*CaptureSnapshotResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method CaptureSnapshot not implemented")
+}
+func (UnimplementedApiServiceServer) DeleteRecording(context.Context, *DeleteRecordingRequest) (*DeleteRecordingResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method DeleteRecording not implemented")
 }
 func (UnimplementedApiServiceServer) mustEmbedUnimplementedApiServiceServer() {}
 
@@ -92,6 +108,24 @@ func _ApiService_CaptureSnapshot_Handler(srv interface{}, ctx context.Context, d
 	return interceptor(ctx, in, info, handler)
 }
 
+func _ApiService_DeleteRecording_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(DeleteRecordingRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ApiServiceServer).DeleteRecording(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/api.ApiService/DeleteRecording",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ApiServiceServer).DeleteRecording(ctx, req.(*DeleteRecordingRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // ApiService_ServiceDesc is the grpc.ServiceDesc for ApiService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -102,6 +136,10 @@ var ApiService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "CaptureSnapshot",
 			Handler:    _ApiService_CaptureSnapshot_Handler,
+		},
+		{
+			MethodName: "DeleteRecording",
+			Handler:    _ApiService_DeleteRecording_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

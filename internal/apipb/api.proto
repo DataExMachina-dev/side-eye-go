@@ -18,6 +18,7 @@ message CaptureSnapshotRequest {
 }
 
 message CaptureSnapshotResponse {
+  int64 recording_id = 4;
   int64 snapshot_id = 1;
   string snapshot_url = 2;
   repeated ProcessError errors = 3;
@@ -49,6 +50,12 @@ enum ErrorKind {
   ENVIRONMENT_MISSING = 5;
 }
 
+message DeleteRecordingRequest {
+  int64 recording_id = 1;
+}
+
+message DeleteRecordingResponse {}
+
 // The service exposes an interface for capturing snapshots programmatically.
 service ApiService {
   // CaptureSnapshot captures a snapshot of the specified environment or the
@@ -56,4 +63,7 @@ service ApiService {
   // an error containing SnapshotError as a detail. If at least one process
   // snapshot is successful, the RPC is successful.
   rpc CaptureSnapshot(CaptureSnapshotRequest) returns (CaptureSnapshotResponse);
+
+  // DeleteRecording deletes the recording with the specified id.
+  rpc DeleteRecording(DeleteRecordingRequest) returns (DeleteRecordingResponse);
 }
