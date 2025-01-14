@@ -12,7 +12,6 @@ message GetArtifactRequest {
     BPF_SOURCE = 3;
     SPEC = 5;
     SNAPSHOT_PROGRAM = 6;
-
     reserved 4;
   }
 
@@ -22,6 +21,44 @@ message GetArtifactRequest {
   Kind kind = 2;
 }
 
+message GetTypedArtifactsRequest {
+  enum Kind {
+    UNKNOWN = 0;
+    EVENTS_BPF_METADATA = 1;
+  }
+
+  // The key associated with this artifact.
+  string key = 1;
+
+  // Selection of artifact kinds.
+  uint64 mask = 2;
+}
+
+message GetTypedArtifactsResponse {
+  optional EventsBpfMetadata events_bpf_metadata = 1;
+}
+
+message EventsBpfMetadata {
+  message Probe {
+    string program_name = 1;
+
+    message AttachPoint {
+      uint64 offset = 1;
+      uint64 cookie = 2;
+    }
+    repeated AttachPoint attach_points = 2;
+  }
+  repeated Probe probes = 1;
+}
+
+message EventProbe {
+  uint64 injection_pc = 1;
+  uint64 cookie = 2;
+}
+
 service ArtifactStore {
   rpc GetArtifact(GetArtifactRequest) returns (stream chunk.Chunk) {}
+
+  rpc GetTypedArtifacts(GetTypedArtifactsRequest)
+      returns (GetTypedArtifactsResponse) {}
 }
