@@ -51,11 +51,6 @@ message EventsBpfMetadata {
   repeated Probe probes = 1;
 }
 
-message EventProbe {
-  uint64 injection_pc = 1;
-  uint64 cookie = 2;
-}
-
 service ArtifactStore {
   rpc GetArtifact(GetArtifactRequest) returns (stream chunk.Chunk) {}
 
