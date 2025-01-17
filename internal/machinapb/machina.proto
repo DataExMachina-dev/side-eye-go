@@ -17,6 +17,11 @@ message Update {
   // The process which was updated.
   repeated process.Process added = 1;
   repeated string removed = 2;
+
+  // Indicates that the update is incomplete. This is used to indicate that
+  // the agent is paginating its processes list and the current set is not
+  // a complete list.
+  bool incomplete = 3;
 }
 
 message GetExecutableRequest {
