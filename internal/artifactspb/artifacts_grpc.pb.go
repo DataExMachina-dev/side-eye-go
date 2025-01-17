@@ -20,6 +20,7 @@ const _ = grpc.SupportPackageIsVersion7
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 type ArtifactStoreClient interface {
 	GetArtifact(ctx context.Context, in *GetArtifactRequest, opts ...grpc.CallOption) (ArtifactStore_GetArtifactClient, error)
+	GetTypedArtifacts(ctx context.Context, in *GetTypedArtifactsRequest, opts ...grpc.CallOption) (*GetTypedArtifactsResponse, error)
 }
 
 type artifactStoreClient struct {
@@ -62,11 +63,21 @@ func (x *artifactStoreGetArtifactClient) Recv() (*chunkpb.Chunk, error) {
 	return m, nil
 }
 
+func (c *artifactStoreClient) GetTypedArtifacts(ctx context.Context, in *GetTypedArtifactsRequest, opts ...grpc.CallOption) (*GetTypedArtifactsResponse, error) {
+	out := new(GetTypedArtifactsResponse)
+	err := c.cc.Invoke(ctx, "/artifacts.ArtifactStore/GetTypedArtifacts", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // ArtifactStoreServer is the server API for ArtifactStore service.
 // All implementations must embed UnimplementedArtifactStoreServer
 // for forward compatibility
 type ArtifactStoreServer interface {
 	GetArtifact(*GetArtifactRequest, ArtifactStore_GetArtifactServer) error
+	GetTypedArtifacts(context.Context, *GetTypedArtifactsRequest) (*GetTypedArtifactsResponse, error)
 	mustEmbedUnimplementedArtifactStoreServer()
 }
 
@@ -76,6 +87,9 @@ type UnimplementedArtifactStoreServer struct {
 
 func (UnimplementedArtifactStoreServer) GetArtifact(*GetArtifactRequest, ArtifactStore_GetArtifactServer) error {
 	return status.Errorf(codes.Unimplemented, "method GetArtifact not implemented")
+}
+func (UnimplementedArtifactStoreServer) GetTypedArtifacts(context.Context, *GetTypedArtifactsRequest) (*GetTypedArtifactsResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method GetTypedArtifacts not implemented")
 }
 func (UnimplementedArtifactStoreServer) mustEmbedUnimplementedArtifactStoreServer() {}
 
@@ -111,13 +125,36 @@ func (x *artifactStoreGetArtifactServer) Send(m *chunkpb.Chunk) error {
 	return x.ServerStream.SendMsg(m)
 }
 
+func _ArtifactStore_GetTypedArtifacts_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetTypedArtifactsRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ArtifactStoreServer).GetTypedArtifacts(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/artifacts.ArtifactStore/GetTypedArtifacts",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ArtifactStoreServer).GetTypedArtifacts(ctx, req.(*GetTypedArtifactsRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // ArtifactStore_ServiceDesc is the grpc.ServiceDesc for ArtifactStore service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
 var ArtifactStore_ServiceDesc = grpc.ServiceDesc{
 	ServiceName: "artifacts.ArtifactStore",
 	HandlerType: (*ArtifactStoreServer)(nil),
-	Methods:     []grpc.MethodDesc{},
+	Methods: []grpc.MethodDesc{
+		{
+			MethodName: "GetTypedArtifacts",
+			Handler:    _ArtifactStore_GetTypedArtifacts_Handler,
+		},
+	},
 	Streams: []grpc.StreamDesc{
 		{
 			StreamName:    "GetArtifact",

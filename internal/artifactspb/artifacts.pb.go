@@ -79,6 +79,52 @@ func (GetArtifactRequest_Kind) EnumDescriptor() ([]byte, []int) {
 	return file_artifacts_proto_rawDescGZIP(), []int{0, 0}
 }
 
+type GetTypedArtifactsRequest_Kind int32
+
+const (
+	GetTypedArtifactsRequest_UNKNOWN             GetTypedArtifactsRequest_Kind = 0
+	GetTypedArtifactsRequest_EVENTS_BPF_METADATA GetTypedArtifactsRequest_Kind = 1
+)
+
+// Enum value maps for GetTypedArtifactsRequest_Kind.
+var (
+	GetTypedArtifactsRequest_Kind_name = map[int32]string{
+		0: "UNKNOWN",
+		1: "EVENTS_BPF_METADATA",
+	}
+	GetTypedArtifactsRequest_Kind_value = map[string]int32{
+		"UNKNOWN":             0,
+		"EVENTS_BPF_METADATA": 1,
+	}
+)
+
+func (x GetTypedArtifactsRequest_Kind) Enum() *GetTypedArtifactsRequest_Kind {
+	p := new(GetTypedArtifactsRequest_Kind)
+	*p = x
+	return p
+}
+
+func (x GetTypedArtifactsRequest_Kind) String() string {
+	return protoimpl.X.EnumStringOf(x.Descriptor(), protoreflect.EnumNumber(x))
+}
+
+func (GetTypedArtifactsRequest_Kind) Descriptor() protoreflect.EnumDescriptor {
+	return file_artifacts_proto_enumTypes[1].Descriptor()
+}
+
+func (GetTypedArtifactsRequest_Kind) Type() protoreflect.EnumType {
+	return &file_artifacts_proto_enumTypes[1]
+}
+
+func (x GetTypedArtifactsRequest_Kind) Number() protoreflect.EnumNumber {
+	return protoreflect.EnumNumber(x)
+}
+
+// Deprecated: Use GetTypedArtifactsRequest_Kind.Descriptor instead.
+func (GetTypedArtifactsRequest_Kind) EnumDescriptor() ([]byte, []int) {
+	return file_artifacts_proto_rawDescGZIP(), []int{1, 0}
+}
+
 type GetArtifactRequest struct {
 	state         protoimpl.MessageState
 	sizeCache     protoimpl.SizeCache
@@ -136,6 +182,267 @@ func (x *GetArtifactRequest) GetKind() GetArtifactRequest_Kind {
 	return GetArtifactRequest_UNKNOWN
 }
 
+type GetTypedArtifactsRequest struct {
+	state         protoimpl.MessageState
+	sizeCache     protoimpl.SizeCache
+	unknownFields protoimpl.UnknownFields
+
+	// The key associated with this artifact.
+	Key string `protobuf:"bytes,1,opt,name=key,proto3" json:"key,omitempty"`
+	// Selection of artifact kinds.
+	Mask uint64 `protobuf:"varint,2,opt,name=mask,proto3" json:"mask,omitempty"`
+}
+
+func (x *GetTypedArtifactsRequest) Reset() {
+	*x = GetTypedArtifactsRequest{}
+	if protoimpl.UnsafeEnabled {
+		mi := &file_artifacts_proto_msgTypes[1]
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		ms.StoreMessageInfo(mi)
+	}
+}
+
+func (x *GetTypedArtifactsRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GetTypedArtifactsRequest) ProtoMessage() {}
+
+func (x *GetTypedArtifactsRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_artifacts_proto_msgTypes[1]
+	if protoimpl.UnsafeEnabled && x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GetTypedArtifactsRequest.ProtoReflect.Descriptor instead.
+func (*GetTypedArtifactsRequest) Descriptor() ([]byte, []int) {
+	return file_artifacts_proto_rawDescGZIP(), []int{1}
+}
+
+func (x *GetTypedArtifactsRequest) GetKey() string {
+	if x != nil {
+		return x.Key
+	}
+	return ""
+}
+
+func (x *GetTypedArtifactsRequest) GetMask() uint64 {
+	if x != nil {
+		return x.Mask
+	}
+	return 0
+}
+
+type GetTypedArtifactsResponse struct {
+	state         protoimpl.MessageState
+	sizeCache     protoimpl.SizeCache
+	unknownFields protoimpl.UnknownFields
+
+	EventsBpfMetadata *EventsBpfMetadata `protobuf:"bytes,1,opt,name=events_bpf_metadata,json=eventsBpfMetadata,proto3,oneof" json:"events_bpf_metadata,omitempty"`
+}
+
+func (x *GetTypedArtifactsResponse) Reset() {
+	*x = GetTypedArtifactsResponse{}
+	if protoimpl.UnsafeEnabled {
+		mi := &file_artifacts_proto_msgTypes[2]
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		ms.StoreMessageInfo(mi)
+	}
+}
+
+func (x *GetTypedArtifactsResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GetTypedArtifactsResponse) ProtoMessage() {}
+
+func (x *GetTypedArtifactsResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_artifacts_proto_msgTypes[2]
+	if protoimpl.UnsafeEnabled && x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GetTypedArtifactsResponse.ProtoReflect.Descriptor instead.
+func (*GetTypedArtifactsResponse) Descriptor() ([]byte, []int) {
+	return file_artifacts_proto_rawDescGZIP(), []int{2}
+}
+
+func (x *GetTypedArtifactsResponse) GetEventsBpfMetadata() *EventsBpfMetadata {
+	if x != nil {
+		return x.EventsBpfMetadata
+	}
+	return nil
+}
+
+type EventsBpfMetadata struct {
+	state         protoimpl.MessageState
+	sizeCache     protoimpl.SizeCache
+	unknownFields protoimpl.UnknownFields
+
+	Probes []*EventsBpfMetadata_Probe `protobuf:"bytes,1,rep,name=probes,proto3" json:"probes,omitempty"`
+}
+
+func (x *EventsBpfMetadata) Reset() {
+	*x = EventsBpfMetadata{}
+	if protoimpl.UnsafeEnabled {
+		mi := &file_artifacts_proto_msgTypes[3]
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		ms.StoreMessageInfo(mi)
+	}
+}
+
+func (x *EventsBpfMetadata) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*EventsBpfMetadata) ProtoMessage() {}
+
+func (x *EventsBpfMetadata) ProtoReflect() protoreflect.Message {
+	mi := &file_artifacts_proto_msgTypes[3]
+	if protoimpl.UnsafeEnabled && x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use EventsBpfMetadata.ProtoReflect.Descriptor instead.
+func (*EventsBpfMetadata) Descriptor() ([]byte, []int) {
+	return file_artifacts_proto_rawDescGZIP(), []int{3}
+}
+
+func (x *EventsBpfMetadata) GetProbes() []*EventsBpfMetadata_Probe {
+	if x != nil {
+		return x.Probes
+	}
+	return nil
+}
+
+type EventsBpfMetadata_Probe struct {
+	state         protoimpl.MessageState
+	sizeCache     protoimpl.SizeCache
+	unknownFields protoimpl.UnknownFields
+
+	ProgramName  string                                 `protobuf:"bytes,1,opt,name=program_name,json=programName,proto3" json:"program_name,omitempty"`
+	AttachPoints []*EventsBpfMetadata_Probe_AttachPoint `protobuf:"bytes,2,rep,name=attach_points,json=attachPoints,proto3" json:"attach_points,omitempty"`
+}
+
+func (x *EventsBpfMetadata_Probe) Reset() {
+	*x = EventsBpfMetadata_Probe{}
+	if protoimpl.UnsafeEnabled {
+		mi := &file_artifacts_proto_msgTypes[4]
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		ms.StoreMessageInfo(mi)
+	}
+}
+
+func (x *EventsBpfMetadata_Probe) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*EventsBpfMetadata_Probe) ProtoMessage() {}
+
+func (x *EventsBpfMetadata_Probe) ProtoReflect() protoreflect.Message {
+	mi := &file_artifacts_proto_msgTypes[4]
+	if protoimpl.UnsafeEnabled && x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use EventsBpfMetadata_Probe.ProtoReflect.Descriptor instead.
+func (*EventsBpfMetadata_Probe) Descriptor() ([]byte, []int) {
+	return file_artifacts_proto_rawDescGZIP(), []int{3, 0}
+}
+
+func (x *EventsBpfMetadata_Probe) GetProgramName() string {
+	if x != nil {
+		return x.ProgramName
+	}
+	return ""
+}
+
+func (x *EventsBpfMetadata_Probe) GetAttachPoints() []*EventsBpfMetadata_Probe_AttachPoint {
+	if x != nil {
+		return x.AttachPoints
+	}
+	return nil
+}
+
+type EventsBpfMetadata_Probe_AttachPoint struct {
+	state         protoimpl.MessageState
+	sizeCache     protoimpl.SizeCache
+	unknownFields protoimpl.UnknownFields
+
+	Offset uint64 `protobuf:"varint,1,opt,name=offset,proto3" json:"offset,omitempty"`
+	Cookie uint64 `protobuf:"varint,2,opt,name=cookie,proto3" json:"cookie,omitempty"`
+}
+
+func (x *EventsBpfMetadata_Probe_AttachPoint) Reset() {
+	*x = EventsBpfMetadata_Probe_AttachPoint{}
+	if protoimpl.UnsafeEnabled {
+		mi := &file_artifacts_proto_msgTypes[5]
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		ms.StoreMessageInfo(mi)
+	}
+}
+
+func (x *EventsBpfMetadata_Probe_AttachPoint) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*EventsBpfMetadata_Probe_AttachPoint) ProtoMessage() {}
+
+func (x *EventsBpfMetadata_Probe_AttachPoint) ProtoReflect() protoreflect.Message {
+	mi := &file_artifacts_proto_msgTypes[5]
+	if protoimpl.UnsafeEnabled && x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use EventsBpfMetadata_Probe_AttachPoint.ProtoReflect.Descriptor instead.
+func (*EventsBpfMetadata_Probe_AttachPoint) Descriptor() ([]byte, []int) {
+	return file_artifacts_proto_rawDescGZIP(), []int{3, 0, 0}
+}
+
+func (x *EventsBpfMetadata_Probe_AttachPoint) GetOffset() uint64 {
+	if x != nil {
+		return x.Offset
+	}
+	return 0
+}
+
+func (x *EventsBpfMetadata_Probe_AttachPoint) GetCookie() uint64 {
+	if x != nil {
+		return x.Cookie
+	}
+	return 0
+}
+
 var File_artifacts_proto protoreflect.FileDescriptor
 
 var file_artifacts_proto_rawDesc = []byte{
@@ -153,13 +460,52 @@ var file_artifacts_proto_rawDesc = []byte{
 	0x44, 0x41, 0x54, 0x41, 0x10, 0x02, 0x12, 0x0e, 0x0a, 0x0a, 0x42, 0x50, 0x46, 0x5f, 0x53, 0x4f,
 	0x55, 0x52, 0x43, 0x45, 0x10, 0x03, 0x12, 0x08, 0x0a, 0x04, 0x53, 0x50, 0x45, 0x43, 0x10, 0x05,
 	0x12, 0x14, 0x0a, 0x10, 0x53, 0x4e, 0x41, 0x50, 0x53, 0x48, 0x4f, 0x54, 0x5f, 0x50, 0x52, 0x4f,
-	0x47, 0x52, 0x41, 0x4d, 0x10, 0x06, 0x22, 0x04, 0x08, 0x04, 0x10, 0x04, 0x32, 0x4f, 0x0a, 0x0d,
-	0x41, 0x72, 0x74, 0x69, 0x66, 0x61, 0x63, 0x74, 0x53, 0x74, 0x6f, 0x72, 0x65, 0x12, 0x3e, 0x0a,
-	0x0b, 0x47, 0x65, 0x74, 0x41, 0x72, 0x74, 0x69, 0x66, 0x61, 0x63, 0x74, 0x12, 0x1d, 0x2e, 0x61,
-	0x72, 0x74, 0x69, 0x66, 0x61, 0x63, 0x74, 0x73, 0x2e, 0x47, 0x65, 0x74, 0x41, 0x72, 0x74, 0x69,
-	0x66, 0x61, 0x63, 0x74, 0x52, 0x65, 0x71, 0x75, 0x65, 0x73, 0x74, 0x1a, 0x0c, 0x2e, 0x63, 0x68,
-	0x75, 0x6e, 0x6b, 0x2e, 0x43, 0x68, 0x75, 0x6e, 0x6b, 0x22, 0x00, 0x30, 0x01, 0x62, 0x06, 0x70,
-	0x72, 0x6f, 0x74, 0x6f, 0x33,
+	0x47, 0x52, 0x41, 0x4d, 0x10, 0x06, 0x22, 0x04, 0x08, 0x04, 0x10, 0x04, 0x22, 0x6e, 0x0a, 0x18,
+	0x47, 0x65, 0x74, 0x54, 0x79, 0x70, 0x65, 0x64, 0x41, 0x72, 0x74, 0x69, 0x66, 0x61, 0x63, 0x74,
+	0x73, 0x52, 0x65, 0x71, 0x75, 0x65, 0x73, 0x74, 0x12, 0x10, 0x0a, 0x03, 0x6b, 0x65, 0x79, 0x18,
+	0x01, 0x20, 0x01, 0x28, 0x09, 0x52, 0x03, 0x6b, 0x65, 0x79, 0x12, 0x12, 0x0a, 0x04, 0x6d, 0x61,
+	0x73, 0x6b, 0x18, 0x02, 0x20, 0x01, 0x28, 0x04, 0x52, 0x04, 0x6d, 0x61, 0x73, 0x6b, 0x22, 0x2c,
+	0x0a, 0x04, 0x4b, 0x69, 0x6e, 0x64, 0x12, 0x0b, 0x0a, 0x07, 0x55, 0x4e, 0x4b, 0x4e, 0x4f, 0x57,
+	0x4e, 0x10, 0x00, 0x12, 0x17, 0x0a, 0x13, 0x45, 0x56, 0x45, 0x4e, 0x54, 0x53, 0x5f, 0x42, 0x50,
+	0x46, 0x5f, 0x4d, 0x45, 0x54, 0x41, 0x44, 0x41, 0x54, 0x41, 0x10, 0x01, 0x22, 0x86, 0x01, 0x0a,
+	0x19, 0x47, 0x65, 0x74, 0x54, 0x79, 0x70, 0x65, 0x64, 0x41, 0x72, 0x74, 0x69, 0x66, 0x61, 0x63,
+	0x74, 0x73, 0x52, 0x65, 0x73, 0x70, 0x6f, 0x6e, 0x73, 0x65, 0x12, 0x51, 0x0a, 0x13, 0x65, 0x76,
+	0x65, 0x6e, 0x74, 0x73, 0x5f, 0x62, 0x70, 0x66, 0x5f, 0x6d, 0x65, 0x74, 0x61, 0x64, 0x61, 0x74,
+	0x61, 0x18, 0x01, 0x20, 0x01, 0x28, 0x0b, 0x32, 0x1c, 0x2e, 0x61, 0x72, 0x74, 0x69, 0x66, 0x61,
+	0x63, 0x74, 0x73, 0x2e, 0x45, 0x76, 0x65, 0x6e, 0x74, 0x73, 0x42, 0x70, 0x66, 0x4d, 0x65, 0x74,
+	0x61, 0x64, 0x61, 0x74, 0x61, 0x48, 0x00, 0x52, 0x11, 0x65, 0x76, 0x65, 0x6e, 0x74, 0x73, 0x42,
+	0x70, 0x66, 0x4d, 0x65, 0x74, 0x61, 0x64, 0x61, 0x74, 0x61, 0x88, 0x01, 0x01, 0x42, 0x16, 0x0a,
+	0x14, 0x5f, 0x65, 0x76, 0x65, 0x6e, 0x74, 0x73, 0x5f, 0x62, 0x70, 0x66, 0x5f, 0x6d, 0x65, 0x74,
+	0x61, 0x64, 0x61, 0x74, 0x61, 0x22, 0x90, 0x02, 0x0a, 0x11, 0x45, 0x76, 0x65, 0x6e, 0x74, 0x73,
+	0x42, 0x70, 0x66, 0x4d, 0x65, 0x74, 0x61, 0x64, 0x61, 0x74, 0x61, 0x12, 0x3a, 0x0a, 0x06, 0x70,
+	0x72, 0x6f, 0x62, 0x65, 0x73, 0x18, 0x01, 0x20, 0x03, 0x28, 0x0b, 0x32, 0x22, 0x2e, 0x61, 0x72,
+	0x74, 0x69, 0x66, 0x61, 0x63, 0x74, 0x73, 0x2e, 0x45, 0x76, 0x65, 0x6e, 0x74, 0x73, 0x42, 0x70,
+	0x66, 0x4d, 0x65, 0x74, 0x61, 0x64, 0x61, 0x74, 0x61, 0x2e, 0x50, 0x72, 0x6f, 0x62, 0x65, 0x52,
+	0x06, 0x70, 0x72, 0x6f, 0x62, 0x65, 0x73, 0x1a, 0xbe, 0x01, 0x0a, 0x05, 0x50, 0x72, 0x6f, 0x62,
+	0x65, 0x12, 0x21, 0x0a, 0x0c, 0x70, 0x72, 0x6f, 0x67, 0x72, 0x61, 0x6d, 0x5f, 0x6e, 0x61, 0x6d,
+	0x65, 0x18, 0x01, 0x20, 0x01, 0x28, 0x09, 0x52, 0x0b, 0x70, 0x72, 0x6f, 0x67, 0x72, 0x61, 0x6d,
+	0x4e, 0x61, 0x6d, 0x65, 0x12, 0x53, 0x0a, 0x0d, 0x61, 0x74, 0x74, 0x61, 0x63, 0x68, 0x5f, 0x70,
+	0x6f, 0x69, 0x6e, 0x74, 0x73, 0x18, 0x02, 0x20, 0x03, 0x28, 0x0b, 0x32, 0x2e, 0x2e, 0x61, 0x72,
+	0x74, 0x69, 0x66, 0x61, 0x63, 0x74, 0x73, 0x2e, 0x45, 0x76, 0x65, 0x6e, 0x74, 0x73, 0x42, 0x70,
+	0x66, 0x4d, 0x65, 0x74, 0x61, 0x64, 0x61, 0x74, 0x61, 0x2e, 0x50, 0x72, 0x6f, 0x62, 0x65, 0x2e,
+	0x41, 0x74, 0x74, 0x61, 0x63, 0x68, 0x50, 0x6f, 0x69, 0x6e, 0x74, 0x52, 0x0c, 0x61, 0x74, 0x74,
+	0x61, 0x63, 0x68, 0x50, 0x6f, 0x69, 0x6e, 0x74, 0x73, 0x1a, 0x3d, 0x0a, 0x0b, 0x41, 0x74, 0x74,
+	0x61, 0x63, 0x68, 0x50, 0x6f, 0x69, 0x6e, 0x74, 0x12, 0x16, 0x0a, 0x06, 0x6f, 0x66, 0x66, 0x73,
+	0x65, 0x74, 0x18, 0x01, 0x20, 0x01, 0x28, 0x04, 0x52, 0x06, 0x6f, 0x66, 0x66, 0x73, 0x65, 0x74,
+	0x12, 0x16, 0x0a, 0x06, 0x63, 0x6f, 0x6f, 0x6b, 0x69, 0x65, 0x18, 0x02, 0x20, 0x01, 0x28, 0x04,
+	0x52, 0x06, 0x63, 0x6f, 0x6f, 0x6b, 0x69, 0x65, 0x32, 0xb1, 0x01, 0x0a, 0x0d, 0x41, 0x72, 0x74,
+	0x69, 0x66, 0x61, 0x63, 0x74, 0x53, 0x74, 0x6f, 0x72, 0x65, 0x12, 0x3e, 0x0a, 0x0b, 0x47, 0x65,
+	0x74, 0x41, 0x72, 0x74, 0x69, 0x66, 0x61, 0x63, 0x74, 0x12, 0x1d, 0x2e, 0x61, 0x72, 0x74, 0x69,
+	0x66, 0x61, 0x63, 0x74, 0x73, 0x2e, 0x47, 0x65, 0x74, 0x41, 0x72, 0x74, 0x69, 0x66, 0x61, 0x63,
+	0x74, 0x52, 0x65, 0x71, 0x75, 0x65, 0x73, 0x74, 0x1a, 0x0c, 0x2e, 0x63, 0x68, 0x75, 0x6e, 0x6b,
+	0x2e, 0x43, 0x68, 0x75, 0x6e, 0x6b, 0x22, 0x00, 0x30, 0x01, 0x12, 0x60, 0x0a, 0x11, 0x47, 0x65,
+	0x74, 0x54, 0x79, 0x70, 0x65, 0x64, 0x41, 0x72, 0x74, 0x69, 0x66, 0x61, 0x63, 0x74, 0x73, 0x12,
+	0x23, 0x2e, 0x61, 0x72, 0x74, 0x69, 0x66, 0x61, 0x63, 0x74, 0x73, 0x2e, 0x47, 0x65, 0x74, 0x54,
+	0x79, 0x70, 0x65, 0x64, 0x41, 0x72, 0x74, 0x69, 0x66, 0x61, 0x63, 0x74, 0x73, 0x52, 0x65, 0x71,
+	0x75, 0x65, 0x73, 0x74, 0x1a, 0x24, 0x2e, 0x61, 0x72, 0x74, 0x69, 0x66, 0x61, 0x63, 0x74, 0x73,
+	0x2e, 0x47, 0x65, 0x74, 0x54, 0x79, 0x70, 0x65, 0x64, 0x41, 0x72, 0x74, 0x69, 0x66, 0x61, 0x63,
+	0x74, 0x73, 0x52, 0x65, 0x73, 0x70, 0x6f, 0x6e, 0x73, 0x65, 0x22, 0x00, 0x62, 0x06, 0x70, 0x72,
+	0x6f, 0x74, 0x6f, 0x33,
 }
 
 var (
@@ -174,22 +520,33 @@ func file_artifacts_proto_rawDescGZIP() []byte {
 	return file_artifacts_proto_rawDescData
 }
 
-var file_artifacts_proto_enumTypes = make([]protoimpl.EnumInfo, 1)
-var file_artifacts_proto_msgTypes = make([]protoimpl.MessageInfo, 1)
+var file_artifacts_proto_enumTypes = make([]protoimpl.EnumInfo, 2)
+var file_artifacts_proto_msgTypes = make([]protoimpl.MessageInfo, 6)
 var file_artifacts_proto_goTypes = []interface{}{
-	(GetArtifactRequest_Kind)(0), // 0: artifacts.GetArtifactRequest.Kind
-	(*GetArtifactRequest)(nil),   // 1: artifacts.GetArtifactRequest
-	(*chunkpb.Chunk)(nil),        // 2: chunk.Chunk
+	(GetArtifactRequest_Kind)(0),                // 0: artifacts.GetArtifactRequest.Kind
+	(GetTypedArtifactsRequest_Kind)(0),          // 1: artifacts.GetTypedArtifactsRequest.Kind
+	(*GetArtifactRequest)(nil),                  // 2: artifacts.GetArtifactRequest
+	(*GetTypedArtifactsRequest)(nil),            // 3: artifacts.GetTypedArtifactsRequest
+	(*GetTypedArtifactsResponse)(nil),           // 4: artifacts.GetTypedArtifactsResponse
+	(*EventsBpfMetadata)(nil),                   // 5: artifacts.EventsBpfMetadata
+	(*EventsBpfMetadata_Probe)(nil),             // 6: artifacts.EventsBpfMetadata.Probe
+	(*EventsBpfMetadata_Probe_AttachPoint)(nil), // 7: artifacts.EventsBpfMetadata.Probe.AttachPoint
+	(*chunkpb.Chunk)(nil),                       // 8: chunk.Chunk
 }
 var file_artifacts_proto_depIdxs = []int32{
 	0, // 0: artifacts.GetArtifactRequest.kind:type_name -> artifacts.GetArtifactRequest.Kind
-	1, // 1: artifacts.ArtifactStore.GetArtifact:input_type -> artifacts.GetArtifactRequest
-	2, // 2: artifacts.ArtifactStore.GetArtifact:output_type -> chunk.Chunk
-	2, // [2:3] is the sub-list for method output_type
-	1, // [1:2] is the sub-list for method input_type
-	1, // [1:1] is the sub-list for extension type_name
-	1, // [1:1] is the sub-list for extension extendee
-	0, // [0:1] is the sub-list for field type_name
+	5, // 1: artifacts.GetTypedArtifactsResponse.events_bpf_metadata:type_name -> artifacts.EventsBpfMetadata
+	6, // 2: artifacts.EventsBpfMetadata.probes:type_name -> artifacts.EventsBpfMetadata.Probe
+	7, // 3: artifacts.EventsBpfMetadata.Probe.attach_points:type_name -> artifacts.EventsBpfMetadata.Probe.AttachPoint
+	2, // 4: artifacts.ArtifactStore.GetArtifact:input_type -> artifacts.GetArtifactRequest
+	3, // 5: artifacts.ArtifactStore.GetTypedArtifacts:input_type -> artifacts.GetTypedArtifactsRequest
+	8, // 6: artifacts.ArtifactStore.GetArtifact:output_type -> chunk.Chunk
+	4, // 7: artifacts.ArtifactStore.GetTypedArtifacts:output_type -> artifacts.GetTypedArtifactsResponse
+	6, // [6:8] is the sub-list for method output_type
+	4, // [4:6] is the sub-list for method input_type
+	4, // [4:4] is the sub-list for extension type_name
+	4, // [4:4] is the sub-list for extension extendee
+	0, // [0:4] is the sub-list for field type_name
 }
 
 func init() { file_artifacts_proto_init() }
@@ -210,14 +567,75 @@ func file_artifacts_proto_init() {
 				return nil
 			}
 		}
+		file_artifacts_proto_msgTypes[1].Exporter = func(v interface{}, i int) interface{} {
+			switch v := v.(*GetTypedArtifactsRequest); i {
+			case 0:
+				return &v.state
+			case 1:
+				return &v.sizeCache
+			case 2:
+				return &v.unknownFields
+			default:
+				return nil
+			}
+		}
+		file_artifacts_proto_msgTypes[2].Exporter = func(v interface{}, i int) interface{} {
+			switch v := v.(*GetTypedArtifactsResponse); i {
+			case 0:
+				return &v.state
+			case 1:
+				return &v.sizeCache
+			case 2:
+				return &v.unknownFields
+			default:
+				return nil
+			}
+		}
+		file_artifacts_proto_msgTypes[3].Exporter = func(v interface{}, i int) interface{} {
+			switch v := v.(*EventsBpfMetadata); i {
+			case 0:
+				return &v.state
+			case 1:
+				return &v.sizeCache
+			case 2:
+				return &v.unknownFields
+			default:
+				return nil
+			}
+		}
+		file_artifacts_proto_msgTypes[4].Exporter = func(v interface{}, i int) interface{} {
+			switch v := v.(*EventsBpfMetadata_Probe); i {
+			case 0:
+				return &v.state
+			case 1:
+				return &v.sizeCache
+			case 2:
+				return &v.unknownFields
+			default:
+				return nil
+			}
+		}
+		file_artifacts_proto_msgTypes[5].Exporter = func(v interface{}, i int) interface{} {
+			switch v := v.(*EventsBpfMetadata_Probe_AttachPoint); i {
+			case 0:
+				return &v.state
+			case 1:
+				return &v.sizeCache
+			case 2:
+				return &v.unknownFields
+			default:
+				return nil
+			}
+		}
 	}
+	file_artifacts_proto_msgTypes[2].OneofWrappers = []interface{}{}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: file_artifacts_proto_rawDesc,
-			NumEnums:      1,
-			NumMessages:   1,
+			NumEnums:      2,
+			NumMessages:   6,
 			NumExtensions: 0,
 			NumServices:   1,
 		},
