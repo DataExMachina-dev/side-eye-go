@@ -39,6 +39,12 @@ message RuntimeConfig {
   // Offset in runtime.moduledata of the bss field.
   uint32 moduledata_bss_offset = 20;
 
+  // Address of runtime.memstats.
+  uint64 variable_runtime_dot_memstats = 23;
+
+  // Offset in runtime.memstats of the last_gc_unix field.
+  uint32 mstats_last_gc_unix_offset = 24;
+
   // Virtual address of the go runtime.bss symbol. Used to compute the actual
   // address of variables that are in the go bss section by resolving the
   // actual address of the bss section by peeking into the runtime.moduledata.

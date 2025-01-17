@@ -7,6 +7,7 @@ type SnapshotHeader struct {
 	GoroutinesByteLen uint32
 	Statistics        Statistics
 	KTimeNS           uint64
+	LastGcUnix        uint64
 }
 
 type Statistics struct {

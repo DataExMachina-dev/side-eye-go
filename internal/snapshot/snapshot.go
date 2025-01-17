@@ -103,6 +103,13 @@ func Snapshot(p *snapshotpb.SnapshotProgram) (*machinapb.SnapshotResponse, error
 			b.queue.Push(uintptr(v.Address), v.Type, 0)
 		}
 		b.processQueue()
+
+		memstatsBssOffset := p.RuntimeConfig.VariableRuntimeDotMemstats - p.RuntimeConfig.GoRuntimeBssAddress
+		snapshotHeader.LastGcUnix = *(*uint64)(unsafe.Pointer(
+			bssAddr +
+				uintptr(memstatsBssOffset) +
+				uintptr(p.RuntimeConfig.MstatsLastGcUnixOffset),
+		))
 		snapshotHeader.Statistics.PointerDurationNs = uint64(time.Since(afterStacks).Nanoseconds())
 	}) {
 		return nil, fmt.Errorf("failed to execute snapshot")
