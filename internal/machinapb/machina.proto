@@ -123,6 +123,12 @@ message SnapshotResponse {
 
   // The duration of the pause for the snapshot as observed by the agent.
   uint64 pause_duration_ns = 3;
+
+  // The approximate boot time of the process. This can
+  // be used to translate the timestamps communicated in
+  // clock_monotonic to human time.
+  google.protobuf.Timestamp approximate_boot_time = 4;
+
 }
 
 message MachinaInfoRequest {}

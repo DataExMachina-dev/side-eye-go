@@ -1,6 +1,7 @@
 package snapshot
 
 import (
+	"errors"
 	"fmt"
 	"sort"
 	"time"
@@ -9,6 +10,7 @@ import (
 	"google.golang.org/protobuf/types/known/timestamppb"
 
 	"github.com/DataExMachina-dev/side-eye-go/internal/allgs"
+	"github.com/DataExMachina-dev/side-eye-go/internal/boottime"
 	"github.com/DataExMachina-dev/side-eye-go/internal/framing"
 	"github.com/DataExMachina-dev/side-eye-go/internal/machinapb"
 	"github.com/DataExMachina-dev/side-eye-go/internal/moduledata"
@@ -119,10 +121,17 @@ func Snapshot(p *snapshotpb.SnapshotProgram) (*machinapb.SnapshotResponse, error
 	}
 	snapshotHeader.DataByteLen = b.out.Len()
 	snapshotHeader.Statistics.TotalDurationNs = uint64(time.Since(start).Nanoseconds())
+	var approximateBootTime *timestamppb.Timestamp
+	if bootTime, err := boottime.BootTime(); err == nil {
+		approximateBootTime = timestamppb.New(bootTime)
+	} else if !errors.Is(err, boottime.ErrNotImplemented) {
+		return nil, fmt.Errorf("failed to get boot time: %w", err)
+	}
 	return &machinapb.SnapshotResponse{
-		Data:            b.out.data(),
-		Timestamp:       timestamppb.New(start),
-		PauseDurationNs: snapshotHeader.Statistics.TotalDurationNs,
+		Data:                b.out.data(),
+		Timestamp:           timestamppb.New(start),
+		PauseDurationNs:     snapshotHeader.Statistics.TotalDurationNs,
+		ApproximateBootTime: approximateBootTime,
 	}, nil
 }
 
