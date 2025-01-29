@@ -25,6 +25,8 @@ type stackMachine struct {
 	goContextOffset         uint32
 	goContextCaptureBitmask uint64
 
+	bssAddrShift *uint64
+
 	q *queue
 	b *outBuf
 	g *goRuntimeTypeResolver
@@ -94,8 +96,7 @@ func (s *stackMachine) resolveEmptyInterface() *ResolvedEmptyInterface {
 		_type uintptr
 		data  uintptr
 	}
-	var e runtimeEface
-	e = *(*runtimeEface)(ptr)
+	e := *(*runtimeEface)(ptr)
 	// nil eface
 	if e._type == 0 {
 		return nil
@@ -333,6 +334,7 @@ func (s *stackMachine) Run(
 			if !ok {
 				break
 			}
+			*(*uint64)(s.b.Ptr(offset)) -= *s.bssAddrShift
 			entry_pc := *(*uint64)(s.b.Ptr(offset))
 			i := sort.Search(len(s.p.SubroutineClassifier.EntryPc),
 				func(i int) bool {

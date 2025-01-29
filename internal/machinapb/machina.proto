@@ -129,6 +129,10 @@ message SnapshotResponse {
   // clock_monotonic to human time.
   google.protobuf.Timestamp approximate_boot_time = 4;
 
+  /// The difference between actual virtual address in bss section and virtual
+  /// address according to debug information, due to address space layour
+  /// randomization (ASLR).
+  uint64 bss_addr_shift = 5;
 }
 
 message MachinaInfoRequest {}

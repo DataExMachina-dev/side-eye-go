@@ -31,13 +31,12 @@ func (it GoroutineIterator) Iterate(f func(Goroutine)) {
 
 // NewGoroutineIterator creates a new GoroutineIterator given the actual address
 // of the bss section.
-func NewGoroutineIterator(cfg *snapshotpb.RuntimeConfig, bssAddr uintptr) (GoroutineIterator, error) {
+func NewGoroutineIterator(cfg *snapshotpb.RuntimeConfig, bssAddrShift uint64) (GoroutineIterator, error) {
 	if cfg.VariableRuntimeDotAllgs == 0 || cfg.GoRuntimeBssAddress == 0 ||
 		cfg.VariableRuntimeDotAllgs < cfg.GoRuntimeBssAddress {
 		return GoroutineIterator{}, fmt.Errorf("invalid runtime config: missing allgs or bss section address")
 	}
-	allGsBssOffset := cfg.VariableRuntimeDotAllgs - cfg.GoRuntimeBssAddress
-	allGs := unsafe.Pointer(bssAddr + uintptr(allGsBssOffset))
+	allGs := unsafe.Pointer(uintptr(cfg.VariableRuntimeDotAllgs + bssAddrShift))
 	return GoroutineIterator{allGs: allGs, cfg: cfg}, nil
 }
 

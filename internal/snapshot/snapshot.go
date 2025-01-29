@@ -82,13 +82,20 @@ func Snapshot(p *snapshotpb.SnapshotProgram) (*machinapb.SnapshotResponse, error
 	}
 
 	var iteratorErr error
+	var bssAddrShift uint64
 	if !stoptheworld.StopTheWorld(p.RuntimeConfig, func() {
-		for _, v := range p.RuntimeConfig.StaticVariables {
-			b.queue.Push(uintptr(v.Address), v.Type, 0)
-		}
 		md := moduledata.GetFirstmoduledata()
+		// Calculate potential shift between virtual addresses according to debug information
+		// and actual memory layout, due to address space layout randomization (ASLR).
 		bssAddr := *(*uintptr)(unsafe.Pointer(uintptr(md) + uintptr(p.RuntimeConfig.ModuledataBssOffset)))
-		it, err := allgs.NewGoroutineIterator(p.RuntimeConfig, bssAddr)
+		bssAddrShift = uint64(bssAddr) - p.RuntimeConfig.GoRuntimeBssAddress
+		b.sm.bssAddrShift = &bssAddrShift
+
+		for _, v := range p.RuntimeConfig.StaticVariables {
+			b.queue.Push(uintptr(v.Address+bssAddrShift), v.Type, 0)
+		}
+
+		it, err := allgs.NewGoroutineIterator(p.RuntimeConfig, bssAddrShift)
 		if err != nil {
 			iteratorErr = err
 			return
@@ -132,6 +139,7 @@ func Snapshot(p *snapshotpb.SnapshotProgram) (*machinapb.SnapshotResponse, error
 		Timestamp:           timestamppb.New(start),
 		PauseDurationNs:     snapshotHeader.Statistics.TotalDurationNs,
 		ApproximateBootTime: approximateBootTime,
+		BssAddrShift:        bssAddrShift,
 	}, nil
 }
 
