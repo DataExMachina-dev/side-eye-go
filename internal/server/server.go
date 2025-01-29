@@ -82,6 +82,7 @@ func (s *Server) GetExecutable(req *machinapb.GetExecutableRequest, stream machi
 	if err != nil {
 		return fmt.Errorf("failed to open executable at %s: %w", exe, err)
 	}
+	defer exeFile.Close()
 	const chunkSize = 128 << 10
 	chunk := chunkpb.Chunk{
 		Data: make([]byte, chunkSize),
@@ -214,6 +215,7 @@ func doHash() (string, error) {
 	if err != nil {
 		return "", fmt.Errorf("failed to open executable file at %s: %w", exe, err)
 	}
+	defer exeFile.Close()
 	hasher, err := highwayhash.New64(hashKey[:])
 	if err != nil {
 		return "", fmt.Errorf("failed to create hasher: %w", err)
