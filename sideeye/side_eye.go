@@ -77,6 +77,13 @@ func WithErrorLogger(f func(err error)) Option {
 //
 // programName is the name of the program that this process will be identified
 // as on app.side-eye.io.
+//
+// If the WithToken() option is not specified, the SIDE_EYE_TOKEN environment
+// variable is expected to be set to the organization's API token. If the
+// WithEnvironment() option is not set, the environment that this process is
+// part of is controlled by the SIDE_EYE_ENVIRONMENT environment variables; if
+// the variable is not set, then the process will not be part of a named
+// environment.
 func Init(
 	ctx context.Context,
 	programName string,

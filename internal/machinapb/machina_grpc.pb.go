@@ -66,7 +66,7 @@ type MachinaClient interface {
 	// GetMetadata returns metadata about the machina.
 	//
 	// The response is streaming so that ex can detect disconnections from
-	// the machina.
+	// the agent.
 	MachinaInfo(ctx context.Context, in *MachinaInfoRequest, opts ...grpc.CallOption) (Machina_MachinaInfoClient, error)
 }
 
@@ -287,7 +287,7 @@ type MachinaServer interface {
 	// GetMetadata returns metadata about the machina.
 	//
 	// The response is streaming so that ex can detect disconnections from
-	// the machina.
+	// the agent.
 	MachinaInfo(*MachinaInfoRequest, Machina_MachinaInfoServer) error
 	mustEmbedUnimplementedMachinaServer()
 }

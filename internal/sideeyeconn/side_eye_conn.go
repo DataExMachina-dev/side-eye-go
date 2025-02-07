@@ -152,6 +152,7 @@ func (c *SideEyeConn) Connect(
 		cfg.TenantToken, cfg.Environment, cfg.ProgramName, fetcher,
 		ephemeralProcess)
 	machinapb.RegisterMachinaServer(s, server)
+	machinapb.RegisterGoPprofServer(s, server)
 	c.ActiveConfig = cfg
 	c.mu.Lock()
 	c.mu.server = server

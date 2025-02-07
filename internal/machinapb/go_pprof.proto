@@ -1,0 +1,77 @@
+syntax = "proto3";
+
+package go_pprof;
+
+import "chunk.proto";
+
+import "google/protobuf/timestamp.proto";
+
+// The pprof contents to capture.
+enum CaptureContents {
+  INVALID = 0;
+  // Capture only the execution trace.
+  EXECUTION_TRACE = 1;
+  // Capture both the CPU profile and the execution trace.
+  EXECUTION_TRACE_AND_CPU_PROFILE = 2;
+}
+
+// CaptureRequest is sent to the server to capture duration data from a
+// go process. Internally it will also start a CPU profile that will extend for
+// longer than the runtime trace duration. That CPU profile will be included in
+// the response if the capture contents request so.
+message CaptureRequest {
+  string process_fingerprint = 1;
+  // The number of seconds to capture the execution trace and CPU profile for.
+  uint32 seconds = 2;
+  // The base URL of the pprof server. Note that this should not include
+  // the /debug/pprof prefix.
+  string pprof_address = 3;
+  // The contents to capture.
+  CaptureContents contents = 4;
+}
+
+message CaptureResponse {
+  message ExecutionTraceStart {
+    // The approximate boot time of the process. This can
+    // be used to translate the timestamps communicated in
+    // clock_monotonic to human time.
+    google.protobuf.Timestamp approximate_boot_time = 1;
+    // The timestamp around when the trace started, expressed in monotonic time.
+    // This can be added to approximate_boot_time to get the wall clock time.
+    // Besides indicating when the trace started, this also doubles as a reading
+    // of the monotonic clock around when the approximate_boot_time clock
+    // reading was taken.
+    uint64 trace_start_monotonic = 3;
+
+    // The duration of the execution trace in seconds.
+    uint32 duration_seconds = 2;
+  }
+
+  // Indicates that an execution trace has completed for the process.
+  message ExecutionTraceComplete {}
+
+  // Indicates that a cpu profile has started for the process. Note that this
+  // can be arbitrarily interleaved with other messages.
+  message CpuProfileStart {
+    // The duration of the cpu profile in seconds.
+    uint32 duration_seconds = 1;
+  }
+
+  // Indicates that a cpu profile has completed for the process.
+  message CpuProfileComplete {}
+
+  oneof message {
+    ExecutionTraceStart execution_trace_start = 1;
+    chunk.Chunk execution_trace_chunk = 2;
+    ExecutionTraceComplete execution_trace_complete = 3;
+
+    CpuProfileStart cpu_profile_start = 4;
+    chunk.Chunk cpu_profile_chunk = 5;
+    CpuProfileComplete cpu_profile_complete = 6;
+  }
+}
+
+// GoPprof is the service for the go execution trace protocol.
+service GoPprof {
+  rpc Capture(CaptureRequest) returns (stream CaptureResponse) {}
+}

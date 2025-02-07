@@ -18,5 +18,7 @@ protoc \
   --go-grpc_opt=Mprocess.proto=github.com/DataExMachina-dev/side-eye-go/internal/machinapb \
   --go_opt=Mchunk.proto=github.com/DataExMachina-dev/side-eye-go/internal/chunkpb \
   --go-grpc_opt=Mchunk.proto=github.com/DataExMachina-dev/side-eye-go/internal/chunkpb \
+  --go_opt=Mgo_pprof.proto=github.com/DataExMachina-dev/side-eye-go/internal/machinapb \
+  --go-grpc_opt=Mgo_pprof.proto=github.com/DataExMachina-dev/side-eye-go/internal/machinapb \
   -I . \
-  machina.proto process.proto
+  machina.proto process.proto go_pprof.proto

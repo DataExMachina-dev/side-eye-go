@@ -2,12 +2,19 @@ package server
 
 import (
 	"bufio"
+	"bytes"
+	"context"
 	"encoding/hex"
 	"errors"
 	"fmt"
+	"github.com/DataExMachina-dev/side-eye-go/internal/boottime"
+	"golang.org/x/sync/errgroup"
 	"io"
 	"os"
+	"runtime/pprof"
+	"runtime/trace"
 	"sync"
+	"time"
 
 	"github.com/DataExMachina-dev/side-eye-go/internal/chunkpb"
 	"github.com/DataExMachina-dev/side-eye-go/internal/machinapb"
@@ -41,9 +48,11 @@ type Server struct {
 	hash binaryHashOnce
 
 	machinapb.UnimplementedMachinaServer
+	machinapb.UnimplementedGoPprofServer
 }
 
 var _ machinapb.MachinaServer = (*Server)(nil)
+var _ machinapb.GoPprofServer = (*Server)(nil)
 
 type binaryHashOnce struct {
 	sync.Once
@@ -106,19 +115,21 @@ func (s *Server) GetExecutable(req *machinapb.GetExecutableRequest, stream machi
 // MachinaInfo implements machinapb.MachinaServer.
 func (s *Server) MachinaInfo(req *machinapb.MachinaInfoRequest, stream machinapb.Machina_MachinaInfoServer) error {
 	ctx := stream.Context()
-	// TODO: Populate the rest of the fields.For version, perhaps
-	// runtime.debug.ReadBuildInfo() is the ticket.
 	if err := stream.Send(&machinapb.MachinaInfoResponse{
 		Fingerprint: s.agentFingerprint.String(),
-		Hostname:    "",
-		Version:     "",
+		Version:     "0.1",
 		TenantToken: s.tenantToken,
 		Environment: s.environment,
+		IsLibrary:   true,
+		// TODO: read the local hostname and IPs.
+		Hostname:    "",
 		IpAddresses: []string{},
 	}); err != nil {
 		return fmt.Errorf("failed to send MachinaInfo: %w", err)
 	}
 
+	// Block forever (or until Ex disconnects). Ex expects this RPC to run for the
+	// lifetime of the agent.
 	<-ctx.Done()
 	return ctx.Err()
 }
@@ -224,4 +235,242 @@ func doHash() (string, error) {
 		return "", fmt.Errorf("failed to hash executable: %w", err)
 	}
 	return hex.EncodeToString(hasher.Sum(nil)), nil
+}
+
+// Capture implements machinapb.GoPprofServer interface.
+func (s *Server) Capture(request *machinapb.CaptureRequest, server machinapb.GoPprof_CaptureServer) error {
+	if request.ProcessFingerprint != s.processFingerprint {
+		return status.Errorf(
+			codes.PermissionDenied,
+			"process fingerprint mismatch: got %s, want %s",
+			request.ProcessFingerprint, s.processFingerprint,
+		)
+	}
+
+	serializer := newSendSerializer(server)
+	g, ctx := errgroup.WithContext(server.Context())
+	explicitCpuProfile := request.Contents == machinapb.CaptureContents_EXECUTION_TRACE_AND_CPU_PROFILE
+	if explicitCpuProfile {
+		g.Go(func() error {
+			return s.runCpuProfile(ctx, time.Second*time.Duration(request.Seconds), serializer)
+		})
+	}
+	g.Go(func() error {
+		// If the CPU profile was not explicitly requested, we still want to start a
+		// CPU profile, in order for its data to be automatically included in the
+		// execution trace.
+		if !explicitCpuProfile {
+			if err := pprof.StartCPUProfile(nilWriter{}); err != nil {
+				return fmt.Errorf("failed to start CPU profile: %w", err)
+			}
+			defer pprof.StopCPUProfile()
+		}
+		return s.runExecutionTrace(ctx, time.Second*time.Duration(request.Seconds), serializer)
+	})
+
+	return g.Wait()
+}
+
+func (s *Server) runCpuProfile(ctx context.Context, duration time.Duration, serializer *sendSerializer) error {
+	profileBuf := new(bytes.Buffer)
+	// Note: nothing gets written to profileBuf until pprof.StopCPUProfile() is
+	// called; the profile proto is not streamable. We'll read the whole buffer
+	// after the profile is done.
+	if err := pprof.StartCPUProfile(profileBuf); err != nil {
+		return fmt.Errorf("failed to start CPU profile: %w", err)
+	}
+	msg := &machinapb.CaptureResponse{
+		Message: &machinapb.CaptureResponse_CpuProfileStart_{
+			CpuProfileStart: &machinapb.CaptureResponse_CpuProfileStart{
+				DurationSeconds: uint32(duration / time.Second),
+			},
+		},
+	}
+	if err := serializer.Send(msg); err != nil {
+		return fmt.Errorf("failed to send CPU profile start: %w", err)
+	}
+
+	stop := pprof.StopCPUProfile
+	defer func() {
+		if stop != nil {
+			stop()
+		}
+	}()
+
+	select {
+	case <-ctx.Done():
+		return fmt.Errorf("CPU profiling canceled: %w", context.Cause(ctx))
+	case <-time.After(duration):
+	}
+	pprof.StopCPUProfile()
+	stop = nil // inhibit the deferred call
+
+	// Send chunk by chunk from profileBuf. We send in chunk to not hit gRPC's
+	// maximum message size.
+	const chunkSize = 64 << 10
+	data := profileBuf.Bytes()
+	for len(data) > 0 {
+		chunkLen := chunkSize
+		if chunkLen > len(data) {
+			chunkLen = len(data)
+		}
+		msg := &machinapb.CaptureResponse{
+			Message: &machinapb.CaptureResponse_CpuProfileChunk{
+				CpuProfileChunk: &chunkpb.Chunk{Data: data[:chunkLen]},
+			},
+		}
+		if err := serializer.Send(msg); err != nil {
+			return fmt.Errorf("failed to send CPU profile chunk: %w", err)
+		}
+		data = data[chunkLen:]
+	}
+
+	msg = &machinapb.CaptureResponse{
+		Message: &machinapb.CaptureResponse_CpuProfileComplete_{
+			CpuProfileComplete: &machinapb.CaptureResponse_CpuProfileComplete{},
+		},
+	}
+	if err := serializer.Send(msg); err != nil {
+		return fmt.Errorf("failed to send CPU profile start: %w", err)
+	}
+
+	return nil
+}
+
+func (s *Server) runExecutionTrace(ctx context.Context, duration time.Duration, serializer *sendSerializer) error {
+	reader, writer := io.Pipe()
+	if err := trace.Start(writer); err != nil {
+		return fmt.Errorf("failed to start CPU profile: %w", err)
+	}
+
+	boot, err := boottime.BootTime()
+	if err != nil {
+		return fmt.Errorf("failed to get boot time: %w", err)
+	}
+	msg := &machinapb.CaptureResponse{
+		Message: &machinapb.CaptureResponse_ExecutionTraceStart_{
+			ExecutionTraceStart: &machinapb.CaptureResponse_ExecutionTraceStart{
+				ApproximateBootTime: &timestamppb.Timestamp{Seconds: boot.Unix(), Nanos: int32(boot.UnixNano() % 1e9)},
+				TraceStartMonotonic: uint64(time.Since(boot)),
+				DurationSeconds:     uint32(duration / time.Second),
+			},
+		},
+	}
+	if err := serializer.Send(msg); err != nil {
+		return err
+	}
+
+	stop := trace.Stop
+	defer func() {
+		if stop != nil {
+			stop()
+		}
+	}()
+
+	// Start the reader goroutine that reads execution trace data from the pipe.
+
+	// A channel for the reader goroutine to signal that it failed. The channel is buffered
+	// to allow the reader goroutine to
+	errCh := make(chan error)
+	// Wait for the reader goroutine to finish before returning. This ensures that
+	// we don't leak the reader goroutine, and it also ensures that there's always
+	// someone reading from errCh (so the channel can be unbuffered).
+	defer func() {
+		// Ignore the error. If we got here and the reader goroutine is still
+		// running, then we're already returning an error.
+		_ = <-errCh
+	}()
+	go func() {
+		defer close(errCh)
+		const chunkSize = 64 << 10
+		buf := make([]byte, chunkSize)
+		// Read and send chunk by chunk from profileBuf.
+		for {
+			// Read from the buffer until we have a full chunk.
+			n := 0
+			for n < chunkSize {
+				var nn int
+				nn, err := reader.Read(buf[n:])
+				n += nn
+				if err == io.EOF {
+					break
+				}
+				if err != nil {
+					errCh <- err
+					return
+				}
+			}
+			if n == 0 {
+				break
+			}
+
+			msg := &machinapb.CaptureResponse{
+				Message: &machinapb.CaptureResponse_ExecutionTraceChunk{
+					ExecutionTraceChunk: &chunkpb.Chunk{Data: buf[:n]},
+				},
+			}
+			if err := serializer.Send(msg); err != nil {
+				errCh <- err
+				return
+			}
+		}
+
+		msg := &machinapb.CaptureResponse{
+			Message: &machinapb.CaptureResponse_ExecutionTraceComplete_{},
+		}
+		if err := serializer.Send(msg); err != nil {
+			errCh <- err
+			return
+		}
+	}()
+
+	select {
+	case <-ctx.Done():
+		err := fmt.Errorf("CPU profiling canceled: %w", context.Cause(ctx))
+		// Signal the reader goroutine to terminate.
+		if err := writer.CloseWithError(err); err != nil {
+			panic(fmt.Errorf("unexpected error from writer.Close: %w", err))
+		}
+		return err
+	case err := <-errCh:
+		return err
+	case <-time.After(duration):
+		trace.Stop()
+		stop = nil // inhibit the deferred call
+		// Signal the reader goroutine that the trace is done.
+		if err := writer.Close(); err != nil {
+			panic(fmt.Errorf("unexpected error from writer.Close: %w", err))
+		}
+		// Wait for the reader goroutine to finish.
+		return <-errCh
+	}
+}
+
+// sendSerializer serializes write access to a gRPC stream.
+type sendSerializer struct {
+	mu struct {
+		sync.Mutex
+		server machinapb.GoPprof_CaptureServer
+	}
+}
+
+func newSendSerializer(server machinapb.GoPprof_CaptureServer) *sendSerializer {
+	res := &sendSerializer{}
+	res.mu.server = server
+	return res
+}
+
+func (s *sendSerializer) Send(msg *machinapb.CaptureResponse) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if err := s.mu.server.Send(msg); err != nil {
+		return fmt.Errorf("failed to stream response to client: %w", err)
+	}
+	return nil
+}
+
+type nilWriter struct{}
+
+func (w nilWriter) Write(b []byte) (int, error) {
+	return len(b), nil
 }

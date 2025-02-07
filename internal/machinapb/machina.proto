@@ -130,7 +130,7 @@ message SnapshotResponse {
   google.protobuf.Timestamp approximate_boot_time = 4;
 
   /// The difference between actual virtual address in bss section and virtual
-  /// address according to debug information, due to address space layour
+  /// address according to debug information, due to address space layout
   /// randomization (ASLR).
   uint64 bss_addr_shift = 5;
 }
@@ -144,7 +144,7 @@ message MachinaInfoResponse {
   // The hostname of the machina.
   string hostname = 3;
 
-  // The version of the machina.
+  // The agent version.
   string version = 4;
 
   // The version of the kernel in "{major}.{minor}.{patch}" format.
@@ -161,7 +161,23 @@ message MachinaInfoResponse {
 
   // The IP addresses of the machina.
   repeated string ip_addresses = 7;
+
+  // is_library indicates that this agent is a library, monitoring its own
+  // process.
+  bool is_library = 9;
+  // A description of the capabilities of the agent.
+  // !!! AgentCapabilities agent_capabilities = 9;
 }
+
+// !!!
+//message AgentCapabilities {
+//  bool is_library = 1;
+//  bool events = 2;
+//  bool snapshot = 3;
+//  bool cpu_profile = 4;
+//  bool execution_trace = 5;
+//}
+
 
 service Machina {
   // WatchProcesses returns a stream of processes which match the given
@@ -215,6 +231,6 @@ service Machina {
   // GetMetadata returns metadata about the machina.
   //
   // The response is streaming so that ex can detect disconnections from
-  // the machina.
+  // the agent.
   rpc MachinaInfo(MachinaInfoRequest) returns (stream MachinaInfoResponse) {}
 }
