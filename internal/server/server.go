@@ -10,6 +10,7 @@ import (
 	"github.com/DataExMachina-dev/side-eye-go/internal/boottime"
 	"golang.org/x/sync/errgroup"
 	"io"
+	"net"
 	"os"
 	"runtime/pprof"
 	"runtime/trace"
@@ -112,18 +113,40 @@ func (s *Server) GetExecutable(req *machinapb.GetExecutableRequest, stream machi
 	return nil
 }
 
+func ipAddresses() []string {
+	addrs, _ /* err */ := net.InterfaceAddrs()
+	res := make([]string, 0, len(addrs))
+	for _, addr := range addrs {
+		var ip net.IP
+		switch v := addr.(type) {
+		case *net.IPNet:
+			ip = v.IP
+			if ip.IsLoopback() {
+				continue
+			}
+		case *net.IPAddr:
+			ip = v.IP
+			if ip.IsLoopback() {
+				continue
+			}
+		}
+		res = append(res, ip.String())
+	}
+	return res
+}
+
 // MachinaInfo implements machinapb.MachinaServer.
 func (s *Server) MachinaInfo(req *machinapb.MachinaInfoRequest, stream machinapb.Machina_MachinaInfoServer) error {
 	ctx := stream.Context()
+	hostname, _ /* ignore the error */ := os.Hostname()
 	if err := stream.Send(&machinapb.MachinaInfoResponse{
 		Fingerprint: s.agentFingerprint.String(),
 		Version:     "0.1",
 		TenantToken: s.tenantToken,
 		Environment: s.environment,
 		IsLibrary:   true,
-		// TODO: read the local hostname and IPs.
-		Hostname:    "",
-		IpAddresses: []string{},
+		Hostname:    hostname,
+		IpAddresses: ipAddresses(),
 	}); err != nil {
 		return fmt.Errorf("failed to send MachinaInfo: %w", err)
 	}
@@ -132,6 +155,10 @@ func (s *Server) MachinaInfo(req *machinapb.MachinaInfoRequest, stream machinapb
 	// lifetime of the agent.
 	<-ctx.Done()
 	return ctx.Err()
+}
+
+func (s *Server) Events(stream machinapb.Machina_EventsServer) error {
+	return fmt.Errorf("side-eye-go does not currently support events")
 }
 
 // Snapshot implements machinapb.MachinaServer.

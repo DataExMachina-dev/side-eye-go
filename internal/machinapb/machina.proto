@@ -55,7 +55,7 @@ message EventsRequest {
     // The key associated with the artifacts needed for this snapshot.
     string key = 1;
 
-    // The fingerprint of the process to snapshot.
+    // The fingerprint of the process to probe.
     string process_fingerprint = 2;
   }
 
