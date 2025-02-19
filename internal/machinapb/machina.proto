@@ -79,6 +79,34 @@ message EventsRequest {
   }
 }
 
+// Corresponds to
+// https://arrow.apache.org/rust/arrow_ipc/writer/struct.EncodedData.html
+message ArrowEncodedData {
+  bytes ipc_message = 1;
+  bytes arrow_data = 2;
+}
+
+message ArrowIpcMessage {
+  enum Kind {
+    UNKNOWN = 0;
+    SCHEMA_WITH_DICTIONARY_TRACKER = 1;
+    DICTIONARY_BATCH = 2;
+    RECORD_BATCH = 3;
+  }
+  Kind kind = 2;
+
+  ArrowEncodedData encoded_data = 3;
+}
+
+message ArrowIpcStream {
+  // Id of a physical arrow ipc stream. Logical meaning of the id is established
+  // by ex and the provided wasm event processing program.
+  uint32 id = 1;
+  repeated ArrowIpcMessage messages = 2;
+}
+
+message ArrowIpcStreams { repeated ArrowIpcStream streams = 1; }
+
 message EventsResponse {
   message Event { bytes data = 1; }
 
@@ -111,6 +139,7 @@ message EventsResponse {
     ApproximateBootTime approximate_boot_time = 2;
     Attached attached = 3;
     Detached detached = 4;
+    ArrowIpcStreams arrow_streams = 5;
   }
 }
 
