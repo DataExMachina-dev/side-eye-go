@@ -165,19 +165,7 @@ message MachinaInfoResponse {
   // is_library indicates that this agent is a library, monitoring its own
   // process.
   bool is_library = 9;
-  // A description of the capabilities of the agent.
-  // !!! AgentCapabilities agent_capabilities = 9;
 }
-
-// !!!
-//message AgentCapabilities {
-//  bool is_library = 1;
-//  bool events = 2;
-//  bool snapshot = 3;
-//  bool cpu_profile = 4;
-//  bool execution_trace = 5;
-//}
-
 
 service Machina {
   // WatchProcesses returns a stream of processes which match the given
