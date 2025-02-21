@@ -818,7 +818,7 @@ type EventsRequest_Setup struct {
 
 	// The key associated with the artifacts needed for this snapshot.
 	Key string `protobuf:"bytes,1,opt,name=key,proto3" json:"key,omitempty"`
-	// The fingerprint of the process to snapshot.
+	// The fingerprint of the process to probe.
 	ProcessFingerprint string `protobuf:"bytes,2,opt,name=process_fingerprint,json=processFingerprint,proto3" json:"process_fingerprint,omitempty"`
 }
 

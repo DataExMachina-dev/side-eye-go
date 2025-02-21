@@ -12,10 +12,12 @@ import (
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
 	"google.golang.org/grpc/credentials/insecure"
+	"google.golang.org/grpc/keepalive"
 	"net/netip"
 	"net/url"
 	"os"
 	"sync"
+	"time"
 )
 
 type Config struct {
@@ -141,7 +143,11 @@ func (c *SideEyeConn) Connect(
 		return fmt.Errorf("failed to create listener: %w", err)
 	}
 
-	s := grpc.NewServer()
+	s := grpc.NewServer(grpc.KeepaliveEnforcementPolicy(keepalive.EnforcementPolicy{
+		// Allow the client to send pings more often than the default, to match the
+		// policy we set in Ex.
+		MinTime: 5 * time.Second,
+	}))
 	client, conn, err := newArtifactsClient(cfg.AgentUrl)
 	if err != nil {
 		return fmt.Errorf("failed to create artifacts client: %w", err)
