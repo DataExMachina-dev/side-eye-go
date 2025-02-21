@@ -70,6 +70,12 @@ func WithErrorLogger(f func(err error)) Option {
 	})
 }
 
+func WithInfoLogger(f func(format string, args ...any)) Option {
+	return optionFunc(func(cfg *sideeyeconn.Config) {
+		cfg.InfoLogger = f
+	})
+}
+
 // Init initializes the Side-Eye library. A connection is established to the
 // Side-Eye cloud service and this process is registered to be monitored -- i.e.
 // this process shows up on app.side-eye.io and can be selected to be included

@@ -26,6 +26,7 @@ type Config struct {
 	Environment string
 	ProgramName string
 	ErrorLogger func(err error)
+	InfoLogger  func(format string, args ...any)
 }
 
 const (
@@ -156,7 +157,10 @@ func (c *SideEyeConn) Connect(
 	server := server.NewServer(
 		c.agentFingerprint, c.processFingerprint,
 		cfg.TenantToken, cfg.Environment, cfg.ProgramName, fetcher,
-		ephemeralProcess)
+		ephemeralProcess, server.Loggers{
+			ErrorLogger: cfg.ErrorLogger,
+			InfoLogger:  cfg.InfoLogger,
+		})
 	machinapb.RegisterMachinaServer(s, server)
 	machinapb.RegisterGoPprofServer(s, server)
 	c.ActiveConfig = cfg

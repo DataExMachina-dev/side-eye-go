@@ -48,6 +48,8 @@ type Server struct {
 
 	hash binaryHashOnce
 
+	loggers Loggers
+
 	machinapb.UnimplementedMachinaServer
 	machinapb.UnimplementedGoPprofServer
 }
@@ -61,6 +63,11 @@ type binaryHashOnce struct {
 	err  error
 }
 
+type Loggers struct {
+	ErrorLogger func(err error)
+	InfoLogger  func(format string, args ...any)
+}
+
 // NewServer constructs a new Server object.
 func NewServer(
 	agentFingerprint uuid.UUID,
@@ -70,7 +77,14 @@ func NewServer(
 	programName string,
 	fetcher SnapshotFetcher,
 	ephemeralProcess bool,
+	loggers Loggers,
 ) *Server {
+	if loggers.ErrorLogger == nil {
+		loggers.ErrorLogger = func(err error) {}
+	}
+	if loggers.InfoLogger == nil {
+		loggers.InfoLogger = func(format string, args ...any) {}
+	}
 	return &Server{
 		agentFingerprint:   agentFingerprint,
 		processFingerprint: processFingerprint,
@@ -79,6 +93,7 @@ func NewServer(
 		programName:        programName,
 		fetcher:            fetcher,
 		ephemeralProcess:   ephemeralProcess,
+		loggers:            loggers,
 	}
 }
 
@@ -299,6 +314,9 @@ func (s *Server) Capture(request *machinapb.CaptureRequest, server machinapb.GoP
 }
 
 func (s *Server) runCpuProfile(ctx context.Context, duration time.Duration, serializer *sendSerializer) error {
+	s.loggers.InfoLogger("starting CPU profile for %s", duration)
+	defer s.loggers.InfoLogger("CPU profile complete")
+
 	profileBuf := new(bytes.Buffer)
 	// Note: nothing gets written to profileBuf until pprof.StopCPUProfile() is
 	// called; the profile proto is not streamable. We'll read the whole buffer
@@ -365,6 +383,9 @@ func (s *Server) runCpuProfile(ctx context.Context, duration time.Duration, seri
 }
 
 func (s *Server) runExecutionTrace(ctx context.Context, duration time.Duration, serializer *sendSerializer) error {
+	s.loggers.InfoLogger("starting execution trace for %s", duration)
+	defer s.loggers.InfoLogger("execution trace complete")
+
 	reader, writer := io.Pipe()
 	if err := trace.Start(writer); err != nil {
 		return fmt.Errorf("failed to start CPU profile: %w", err)
