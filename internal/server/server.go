@@ -331,16 +331,16 @@ func (s *Server) runCpuProfile(ctx context.Context, duration time.Duration, seri
 			},
 		},
 	}
-	if err := serializer.Send(msg); err != nil {
-		return fmt.Errorf("failed to send CPU profile start: %w", err)
-	}
-
 	stop := pprof.StopCPUProfile
 	defer func() {
 		if stop != nil {
 			stop()
 		}
 	}()
+
+	if err := serializer.Send(msg); err != nil {
+		return fmt.Errorf("failed to send CPU profile start: %w", err)
+	}
 
 	select {
 	case <-ctx.Done():
