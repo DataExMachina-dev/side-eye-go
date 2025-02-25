@@ -60,7 +60,7 @@ message EventsRequest {
   }
 
   message Stream {
-    // The number of events to stream.
+    // The number of events to stream. 0 means no limit.
     uint32 max_count = 1;
 
     // The duration to stream events for. This is used as an upper bound on the

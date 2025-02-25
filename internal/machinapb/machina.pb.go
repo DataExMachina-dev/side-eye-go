@@ -1155,7 +1155,7 @@ type EventsRequest_Stream struct {
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
 
-	// The number of events to stream.
+	// The number of events to stream. 0 means no limit.
 	MaxCount uint32 `protobuf:"varint,1,opt,name=max_count,json=maxCount,proto3" json:"max_count,omitempty"`
 	// The duration to stream events for. This is used as an upper bound on the
 	// duration to run the probe. In the common case, the client should send a
