@@ -12,6 +12,7 @@ message GetArtifactRequest {
     BPF_SOURCE = 3;
     SPEC = 5;
     SNAPSHOT_PROGRAM = 6;
+    EVENTS_WASM_PROCESSOR = 7;
     reserved 4;
   }
 
@@ -25,7 +26,6 @@ message GetTypedArtifactsRequest {
   enum Kind {
     UNKNOWN = 0;
     EVENTS_BPF_METADATA = 1;
-    EVENTS_WASM_PROCESSOR = 2;
   }
 
   // The key associated with this artifact.
@@ -37,7 +37,6 @@ message GetTypedArtifactsRequest {
 
 message GetTypedArtifactsResponse {
   optional EventsBpfMetadata events_bpf_metadata = 1;
-  optional EventsWasmProcessor events_wasm_processor = 2;
 }
 
 message EventsBpfMetadata {
