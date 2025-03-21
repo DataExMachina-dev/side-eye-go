@@ -244,15 +244,6 @@ func (s *stackMachine) Run(
 			addr := *(*uintptr)(s.b.Ptr(s.offset))
 			s.q.Push(addr, enqueuePointer.ElemType, 0)
 
-		case OpCodeEnqueueBiasedPointer:
-			enqueuePointer := s.decoder.DecodeEnqueueBiasedPointer()
-			if enqueuePointer.ElemType == 0 {
-				return false
-			}
-			addr := *(*uintptr)(s.b.Ptr(s.offset)) +
-				uintptr(enqueuePointer.Bias)
-			s.q.Push(addr, enqueuePointer.ElemType, 0)
-
 		case OpCodeEnqueueSliceHeader:
 			enqueueSliceHeader := s.decoder.DecodeEnqueueSliceHeader()
 			// TODO: Replace this offset with something in the bytecode or some other config

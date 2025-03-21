@@ -59,7 +59,6 @@ const (
 	OpCodeReturn                OpCode = 15
 	OpCodeSetOffset             OpCode = 16
 	OpCodeShiftOffset           OpCode = 17
-	OpCodeEnqueueBiasedPointer  OpCode = 18
 	OpCodeDereferenceCFAOffset  OpCode = 19
 	OpCodeCopyFromRegister      OpCode = 20
 	OpCodeZeroFill              OpCode = 21
@@ -129,10 +128,6 @@ type (
 	OpSetOffset   struct{}
 	OpShiftOffset struct {
 		Increment uint32
-	}
-	OpEnqueueBiasedPointer struct {
-		ElemType uint32
-		Bias     uint32
 	}
 	OpDereferenceCFAOffset struct {
 		Offset      int32
@@ -292,15 +287,6 @@ func (d *OpDecoder) DecodeShiftOffset() OpShiftOffset {
 		Increment: increment,
 	}
 }
-func (d *OpDecoder) DecodeEnqueueBiasedPointer() OpEnqueueBiasedPointer {
-	elemType := binary.LittleEndian.Uint32(d.opBuf[d.pc:])
-	bias := binary.LittleEndian.Uint32(d.opBuf[d.pc+4:])
-	d.pc += 8
-	return OpEnqueueBiasedPointer{
-		ElemType: elemType,
-		Bias:     bias,
-	}
-}
 func (d *OpDecoder) DecodeDereferenceCFAOffset() OpDereferenceCFAOffset {
 	offset := int32(binary.LittleEndian.Uint32(d.opBuf[d.pc:]))
 	byteLen := binary.LittleEndian.Uint32(d.opBuf[d.pc+4:])
@@ -441,9 +427,6 @@ func (d *OpDecoder) PeekOp() Op {
 
 	case OpCodeShiftOffset:
 		op = d.DecodeShiftOffset()
-
-	case OpCodeEnqueueBiasedPointer:
-		op = d.DecodeEnqueueBiasedPointer()
 
 	case OpCodeDereferenceCFAOffset:
 		op = d.DecodeDereferenceCFAOffset()

@@ -30,7 +30,6 @@ func _() {
 	_ = x[OpCodeReturn-15]
 	_ = x[OpCodeSetOffset-16]
 	_ = x[OpCodeShiftOffset-17]
-	_ = x[OpCodeEnqueueBiasedPointer-18]
 	_ = x[OpCodeDereferenceCFAOffset-19]
 	_ = x[OpCodeCopyFromRegister-20]
 	_ = x[OpCodeZeroFill-21]
@@ -44,13 +43,24 @@ func _() {
 	_ = x[OpCodeIllegal-23]
 }
 
-const _OpCode_name = "OpCodeInvalidOpCodeCallOpCodeCondJumpOpCodeDecrementOpCodeEnqueueEmptyInterfaceOpCodeEnqueueInterfaceOpCodeEnqueuePointerOpCodeEnqueueSliceHeaderOpCodeEnqueueStringHeaderOpCodeEnqueueHMapHeaderOpCodeJumpOpCodePopOpCodePushImmOpCodePushOffsetOpCodePushSliceLenOpCodeReturnOpCodeSetOffsetOpCodeShiftOffsetOpCodeEnqueueBiasedPointerOpCodeDereferenceCFAOffsetOpCodeCopyFromRegisterOpCodeZeroFillOpCodePrepareFrameDataOpCodeIllegalPrepareEventDataOpCodeConcludeFrameDataOpCodeChasePointersOpCodePrepareGoContextOpCodeTraverseGoContextOpCodeConcludeGoContextOpCodeSetPresenceBitOpCodeEnqueueSwissMapOpCodeEnqueueSwissMapGroupsOpCodeEnqueueSubroutine"
+const (
+	_OpCode_name_0 = "OpCodeInvalidOpCodeCallOpCodeCondJumpOpCodeDecrementOpCodeEnqueueEmptyInterfaceOpCodeEnqueueInterfaceOpCodeEnqueuePointerOpCodeEnqueueSliceHeaderOpCodeEnqueueStringHeaderOpCodeEnqueueHMapHeaderOpCodeJumpOpCodePopOpCodePushImmOpCodePushOffsetOpCodePushSliceLenOpCodeReturnOpCodeSetOffsetOpCodeShiftOffset"
+	_OpCode_name_1 = "OpCodeDereferenceCFAOffsetOpCodeCopyFromRegisterOpCodeZeroFillOpCodePrepareFrameDataOpCodeIllegalPrepareEventDataOpCodeConcludeFrameDataOpCodeChasePointersOpCodePrepareGoContextOpCodeTraverseGoContextOpCodeConcludeGoContextOpCodeSetPresenceBitOpCodeEnqueueSwissMapOpCodeEnqueueSwissMapGroupsOpCodeEnqueueSubroutine"
+)
 
-var _OpCode_index = [...]uint16{0, 13, 23, 37, 52, 79, 101, 121, 145, 170, 193, 203, 212, 225, 241, 259, 271, 286, 303, 329, 355, 377, 391, 413, 426, 442, 465, 484, 506, 529, 552, 572, 593, 620, 643}
+var (
+	_OpCode_index_0 = [...]uint16{0, 13, 23, 37, 52, 79, 101, 121, 145, 170, 193, 203, 212, 225, 241, 259, 271, 286, 303}
+	_OpCode_index_1 = [...]uint16{0, 26, 48, 62, 84, 97, 113, 136, 155, 177, 200, 223, 243, 264, 291, 314}
+)
 
 func (i OpCode) String() string {
-	if i >= OpCode(len(_OpCode_index)-1) {
+	switch {
+	case i <= 17:
+		return _OpCode_name_0[_OpCode_index_0[i]:_OpCode_index_0[i+1]]
+	case 19 <= i && i <= 33:
+		i -= 19
+		return _OpCode_name_1[_OpCode_index_1[i]:_OpCode_index_1[i+1]]
+	default:
 		return "OpCode(" + strconv.FormatInt(int64(i), 10) + ")"
 	}
-	return _OpCode_name[_OpCode_index[i]:_OpCode_index[i+1]]
 }
