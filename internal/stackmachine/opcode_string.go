@@ -29,9 +29,12 @@ func _() {
 	_ = x[OpCodePushSliceLen-14]
 	_ = x[OpCodeReturn-15]
 	_ = x[OpCodeSetOffset-16]
-	_ = x[OpCodeShiftOffset-17]
+	_ = x[OpCodeAdvanceOffset-17]
 	_ = x[OpCodeDereferenceCFAOffset-19]
 	_ = x[OpCodeCopyFromRegister-20]
+	_ = x[OpCodePrepareExprEval-36]
+	_ = x[OpCodeSaveFrameResult-34]
+	_ = x[OpCodeDereferencePtr-35]
 	_ = x[OpCodeZeroFill-21]
 	_ = x[OpCodeSetPresenceBit-30]
 	_ = x[OpCodePrepareFrameData-22]
@@ -44,20 +47,20 @@ func _() {
 }
 
 const (
-	_OpCode_name_0 = "OpCodeInvalidOpCodeCallOpCodeCondJumpOpCodeDecrementOpCodeEnqueueEmptyInterfaceOpCodeEnqueueInterfaceOpCodeEnqueuePointerOpCodeEnqueueSliceHeaderOpCodeEnqueueStringHeaderOpCodeEnqueueHMapHeaderOpCodeJumpOpCodePopOpCodePushImmOpCodePushOffsetOpCodePushSliceLenOpCodeReturnOpCodeSetOffsetOpCodeShiftOffset"
-	_OpCode_name_1 = "OpCodeDereferenceCFAOffsetOpCodeCopyFromRegisterOpCodeZeroFillOpCodePrepareFrameDataOpCodeIllegalPrepareEventDataOpCodeConcludeFrameDataOpCodeChasePointersOpCodePrepareGoContextOpCodeTraverseGoContextOpCodeConcludeGoContextOpCodeSetPresenceBitOpCodeEnqueueSwissMapOpCodeEnqueueSwissMapGroupsOpCodeEnqueueSubroutine"
+	_OpCode_name_0 = "OpCodeInvalidOpCodeCallOpCodeCondJumpOpCodeDecrementOpCodeEnqueueEmptyInterfaceOpCodeEnqueueInterfaceOpCodeEnqueuePointerOpCodeEnqueueSliceHeaderOpCodeEnqueueStringHeaderOpCodeEnqueueHMapHeaderOpCodeJumpOpCodePopOpCodePushImmOpCodePushOffsetOpCodePushSliceLenOpCodeReturnOpCodeSetOffsetOpCodeAdvanceOffset"
+	_OpCode_name_1 = "OpCodeDereferenceCFAOffsetOpCodeCopyFromRegisterOpCodeZeroFillOpCodePrepareFrameDataOpCodeIllegalPrepareEventDataOpCodeConcludeFrameDataOpCodeChasePointersOpCodePrepareGoContextOpCodeTraverseGoContextOpCodeConcludeGoContextOpCodeSetPresenceBitOpCodeEnqueueSwissMapOpCodeEnqueueSwissMapGroupsOpCodeEnqueueSubroutineOpCodeSaveFrameResultOpCodeDereferencePtrOpCodePrepareExprEval"
 )
 
 var (
-	_OpCode_index_0 = [...]uint16{0, 13, 23, 37, 52, 79, 101, 121, 145, 170, 193, 203, 212, 225, 241, 259, 271, 286, 303}
-	_OpCode_index_1 = [...]uint16{0, 26, 48, 62, 84, 97, 113, 136, 155, 177, 200, 223, 243, 264, 291, 314}
+	_OpCode_index_0 = [...]uint16{0, 13, 23, 37, 52, 79, 101, 121, 145, 170, 193, 203, 212, 225, 241, 259, 271, 286, 305}
+	_OpCode_index_1 = [...]uint16{0, 26, 48, 62, 84, 97, 113, 136, 155, 177, 200, 223, 243, 264, 291, 314, 335, 355, 376}
 )
 
 func (i OpCode) String() string {
 	switch {
 	case i <= 17:
 		return _OpCode_name_0[_OpCode_index_0[i]:_OpCode_index_0[i+1]]
-	case 19 <= i && i <= 33:
+	case 19 <= i && i <= 36:
 		i -= 19
 		return _OpCode_name_1[_OpCode_index_1[i]:_OpCode_index_1[i+1]]
 	default:

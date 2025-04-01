@@ -19,8 +19,9 @@ type stackMachine struct {
 	cfa     uintptr
 	decoder OpDecoder
 
-	frameOffset uint32
-	frameHeader *framing.FrameHeader
+	frameOffset       uint32
+	frameBufEndOffset uint32
+	frameHeader       *framing.FrameHeader
 
 	goContextOffset         uint32
 	goContextCaptureBitmask uint64
@@ -159,6 +160,20 @@ func (s *stackMachine) recordGoContextValue(spec *snapshotpb.GoContextValueType,
 		t = value.typeId
 	}
 	s.q.Push(value.e.addr, t, 0)
+}
+
+func (s *stackMachine) ExecuteReturn() *bool {
+	if len(s.stack) == 0 {
+		ok := true
+		return &ok
+	}
+	if !s.decoder.SetPC(s.stack[len(s.stack)-1]) {
+		ok := false
+		return &ok
+	}
+	s.stack[len(s.stack)-1] = 0 // not needed
+	s.stack = s.stack[:len(s.stack)-1]
+	return nil
 }
 
 func (s *stackMachine) Run(
@@ -364,35 +379,72 @@ func (s *stackMachine) Run(
 			s.stack = append(s.stack, entryLen/uint32(pushSliceLen.ElemByteLen))
 
 		case OpCodeReturn:
-			if len(s.stack) == 0 {
-				return true
+			ok := s.ExecuteReturn()
+			if ok == nil {
+				break
 			}
-			if !s.decoder.SetPC(s.stack[len(s.stack)-1]) {
-				return false
-			}
-			s.stack[len(s.stack)-1] = 0 // not needed
-			s.stack = s.stack[:len(s.stack)-1]
+			return *ok
 
 		case OpCodeSetOffset:
 			setOffset := s.decoder.DecodeSetOffset()
 			_ = setOffset
 			s.offset = s.stack[len(s.stack)-1]
 
-		case OpCodeShiftOffset:
-			shiftOffset := s.decoder.DecodeShiftOffset()
-			s.offset += shiftOffset.Increment
+		case OpCodeAdvanceOffset:
+			advanceOffset := s.decoder.DecodeAdvanceOffset()
+			s.offset += advanceOffset.Increment
 
 		case OpCodeDereferenceCFAOffset:
 			dereferenceCFAOffset := s.decoder.DecodeDereferenceCFAOffset()
 			srcAddr := uintptr(s.cfa) +
 				uintptr(dereferenceCFAOffset.Offset) +
 				uintptr(dereferenceCFAOffset.PointerBias)
+			if !s.b.EnsureLen(s.offset + dereferenceCFAOffset.ByteLen) {
+				return false
+			}
 			s.b.Dereference(s.offset, srcAddr, dereferenceCFAOffset.ByteLen)
 
 		case OpCodeCopyFromRegister:
 			copyFromRegister := s.decoder.DecodeCopyFromRegister()
 			_ = copyFromRegister
+			if !s.b.EnsureLen(s.offset + uint32(copyFromRegister.ByteSize)) {
+				return false
+			}
 			s.b.Zero(s.offset, uint32(copyFromRegister.ByteSize))
+
+		case OpCodePrepareExprEval:
+			s.frameBufEndOffset = s.b.Len()
+			s.offset = s.b.Len()
+
+		case OpCodeSaveFrameResult:
+			saveFrameResult := s.decoder.DecodeSaveFrameResult()
+			s.b.Copy(s.offset, s.frameOffset+saveFrameResult.FrameOffset, saveFrameResult.ByteLen)
+			s.offset = s.frameOffset + saveFrameResult.FrameOffset
+			// Truncate scratch buffer, removing temporary processing data past the frame.
+			// We do it here, as result may be used for following enqueue function that
+			// may want to store data items that we need to preserve.
+			s.b.truncate(s.frameBufEndOffset)
+
+		case OpCodeDereferencePtr:
+			dereferencePtr := s.decoder.DecodeDereferencePtr()
+			addr := *(*uint64)(s.b.Ptr(s.offset)) + uint64(dereferencePtr.Bias)
+			offset, ok := uint32(0), false
+			if addr != 0 {
+				offset, ok = s.b.writeQueueEntry(framing.QueueEntry{
+					Type: 0,
+					Len:  dereferencePtr.ByteLen,
+					Addr: addr,
+				})
+			}
+			if !ok {
+				s.b.truncate(s.frameBufEndOffset)
+				ok := s.ExecuteReturn()
+				if ok == nil {
+					break
+				}
+				return *ok
+			}
+			s.offset = offset
 
 		case OpCodeZeroFill:
 			zeroFill := s.decoder.DecodeZeroFill()
@@ -415,9 +467,9 @@ func (s *stackMachine) Run(
 				// TODO: handle this error
 				return false
 			}
-			s.offset = offset
-			s.frameOffset = offset
 			s.frameHeader = frameHeader
+			s.frameOffset = offset
+			s.offset = offset
 
 		case OpCodeConcludeFrameData:
 			s.b.ConcludeFrameData(s.frameHeader)

@@ -58,9 +58,12 @@ const (
 	OpCodePushSliceLen          OpCode = 14
 	OpCodeReturn                OpCode = 15
 	OpCodeSetOffset             OpCode = 16
-	OpCodeShiftOffset           OpCode = 17
+	OpCodeAdvanceOffset         OpCode = 17
 	OpCodeDereferenceCFAOffset  OpCode = 19
 	OpCodeCopyFromRegister      OpCode = 20
+	OpCodePrepareExprEval       OpCode = 36
+	OpCodeSaveFrameResult       OpCode = 34
+	OpCodeDereferencePtr        OpCode = 35
 	OpCodeZeroFill              OpCode = 21
 	OpCodeSetPresenceBit        OpCode = 30
 	OpCodePrepareFrameData      OpCode = 22
@@ -124,9 +127,9 @@ type (
 	OpPushSliceLen struct {
 		ElemByteLen uint32
 	}
-	OpReturn      struct{}
-	OpSetOffset   struct{}
-	OpShiftOffset struct {
+	OpReturn        struct{}
+	OpSetOffset     struct{}
+	OpAdvanceOffset struct {
 		Increment uint32
 	}
 	OpDereferenceCFAOffset struct {
@@ -137,6 +140,14 @@ type (
 	OpCopyFromRegister struct {
 		Register uint16
 		ByteSize uint8
+	}
+	OpSaveFrameResult struct {
+		FrameOffset uint32
+		ByteLen     uint32
+	}
+	OpDereferencePtr struct {
+		Bias    uint32
+		ByteLen uint32
 	}
 	OpZeroFill struct {
 		ByteLen uint32
@@ -280,10 +291,10 @@ func (d *OpDecoder) DecodeReturn() OpReturn {
 func (d *OpDecoder) DecodeSetOffset() OpSetOffset {
 	return OpSetOffset{}
 }
-func (d *OpDecoder) DecodeShiftOffset() OpShiftOffset {
+func (d *OpDecoder) DecodeAdvanceOffset() OpAdvanceOffset {
 	increment := binary.LittleEndian.Uint32(d.opBuf[d.pc:])
 	d.pc += 4
-	return OpShiftOffset{
+	return OpAdvanceOffset{
 		Increment: increment,
 	}
 }
@@ -305,6 +316,24 @@ func (d *OpDecoder) DecodeCopyFromRegister() OpCopyFromRegister {
 	return OpCopyFromRegister{
 		Register: register,
 		ByteSize: byteSize,
+	}
+}
+func (d *OpDecoder) DecodeSaveFrameResult() OpSaveFrameResult {
+	frameOffset := binary.LittleEndian.Uint32(d.opBuf[d.pc:])
+	byteLen := binary.LittleEndian.Uint32(d.opBuf[d.pc+4:])
+	d.pc += 8
+	return OpSaveFrameResult{
+		FrameOffset: frameOffset,
+		ByteLen:     byteLen,
+	}
+}
+func (d *OpDecoder) DecodeDereferencePtr() OpDereferencePtr {
+	bias := binary.LittleEndian.Uint32(d.opBuf[d.pc:])
+	byteLen := binary.LittleEndian.Uint32(d.opBuf[d.pc+4:])
+	d.pc += 8
+	return OpDereferencePtr{
+		Bias:    bias,
+		ByteLen: byteLen,
 	}
 }
 func (d *OpDecoder) DecodeZeroFill() OpZeroFill {
@@ -361,95 +390,4 @@ type Op struct {
 
 func (d *Op) String() string {
 	return fmt.Sprintf("Op{Pc: %d, Code: %s, Op: %v}", d.Pc, d.Code, d.Op)
-}
-
-func (d *OpDecoder) PeekOp() Op {
-	pc := d.pc
-	defer func() { d.pc = pc }()
-
-	code := OpCode(d.opBuf[d.pc])
-	var op any
-	switch code {
-
-	case OpCodeCall:
-		op = d.DecodeCall()
-
-	case OpCodeCondJump:
-		op = d.DecodeCondJump()
-
-	case OpCodeDecrement:
-		op = d.DecodeDecrement()
-
-	case OpCodeEnqueueEmptyInterface:
-		op = d.DecodeEnqueueEmptyInterface()
-
-	case OpCodeEnqueueInterface:
-		op = d.DecodeEnqueueInterface()
-
-	case OpCodeEnqueuePointer:
-		op = d.DecodeEnqueuePointer()
-
-	case OpCodeEnqueueSliceHeader:
-		op = d.DecodeEnqueueSliceHeader()
-
-	case OpCodeEnqueueStringHeader:
-		op = d.DecodeEnqueueStringHeader()
-
-	case OpCodeEnqueueHMapHeader:
-		op = d.DecodeEnqueueHMapHeader()
-
-	case OpCodeEnqueueSwissMap:
-		op = d.DecodeEnqueueSwissMap()
-
-	case OpCodeEnqueueSwissMapGroups:
-		op = d.DecodeEnqueueSwissMapGroups()
-
-	case OpCodeJump:
-		op = d.DecodeJump()
-
-	case OpCodePop:
-		op = d.DecodePop()
-
-	case OpCodePushImm:
-		op = d.DecodePushImm()
-
-	case OpCodePushOffset:
-		op = d.DecodePushOffset()
-
-	case OpCodePushSliceLen:
-		op = d.DecodePushSliceLen()
-
-	case OpCodeReturn:
-		op = d.DecodeReturn()
-
-	case OpCodeSetOffset:
-		op = d.DecodeSetOffset()
-
-	case OpCodeShiftOffset:
-		op = d.DecodeShiftOffset()
-
-	case OpCodeDereferenceCFAOffset:
-		op = d.DecodeDereferenceCFAOffset()
-
-	case OpCodeCopyFromRegister:
-		op = d.DecodeCopyFromRegister()
-
-	case OpCodeZeroFill:
-		op = d.DecodeZeroFill()
-
-	case OpCodeSetPresenceBit:
-		op = d.DecodeSetPresenceBit()
-
-	case OpCodePrepareFrameData:
-		op = d.DecodePrepareFrameData()
-
-	case OpCodeIllegal:
-		op = d.DecodeIllegal()
-
-	}
-	return Op{
-		Pc:   int32(pc),
-		Code: code,
-		Op:   op,
-	}
 }

@@ -91,6 +91,21 @@ func (o *outBuf) Zero(offset uint32, zeroLen uint32) {
 	}
 }
 
+// Copy buffer data from one offset to the other. Ranges should not overlap.
+//
+// Note that it is assumed that the length fits in the buf.
+func (o *outBuf) Copy(src uint32, dst uint32, len uint32) {
+	if src+len > uint32(cap(o.out)) {
+		return
+	}
+	if dst+len > uint32(cap(o.out)) {
+		return
+	}
+	for i := uint32(0); i < len; i++ {
+		o.out[dst+i] = o.out[src+i]
+	}
+}
+
 // Dereference the pointer at the given offset for the given length.
 // If the dereference operation fails, the memory in the buf is zeroed.
 //
@@ -115,6 +130,18 @@ func (o *outBuf) Len() uint32 {
 	return uint32(len(o.out))
 }
 
+func (o *outBuf) EnsureLen(minLen uint32) (ok bool) {
+	if minLen < o.Len() {
+		return true
+	}
+	if minLen > uint32(cap(o.out)) {
+		o.isFull = true
+		return false
+	}
+	o.out = o.out[:minLen]
+	return true
+}
+
 func (o *outBuf) data() []byte {
 	return o.out
 }
@@ -134,12 +161,10 @@ func (o *outBuf) writeSnapshotHeader() (*framing.SnapshotHeader, bool) {
 // If there is not enough room, false is returned.
 func (o *outBuf) writeGoroutineHeader() (*framing.GoroutineHeader, bool) {
 	offset := o.Len()
-	newLen := len(o.out) + int(unsafe.Sizeof(framing.GoroutineHeader{}))
-	if newLen > cap(o.out) {
-		o.isFull = true
+	newLen := offset + uint32(unsafe.Sizeof(framing.GoroutineHeader{}))
+	if !o.EnsureLen(newLen) {
 		return nil, false
 	}
-	o.out = o.out[:newLen]
 	return (*framing.GoroutineHeader)(o.Ptr(offset)), true
 }
 
@@ -162,12 +187,10 @@ func (o *outBuf) writeQueueEntry(entry framing.QueueEntry) (dataOffset uint32, o
 	if rem != 0 {
 		paddedLen += 8 - rem
 	}
-	newLen := int(headerOffset) + int(paddedLen) + int(unsafe.Sizeof(framing.QueueEntry{}))
-	if newLen > cap(o.out) {
-		o.isFull = true
+	newLen := headerOffset + paddedLen + uint32(unsafe.Sizeof(framing.QueueEntry{}))
+	if !o.EnsureLen(newLen) {
 		return 0, false
 	}
-	o.out = o.out[:newLen]
 	*(*framing.QueueEntry)(o.Ptr(headerOffset)) = entry
 	dataOffset = headerOffset + uint32(unsafe.Sizeof(framing.QueueEntry{}))
 	if !o.Dereference(dataOffset, uintptr(entry.Addr), entry.Len) {
@@ -180,12 +203,10 @@ func (o *outBuf) writeQueueEntry(entry framing.QueueEntry) (dataOffset uint32, o
 func (o *outBuf) writeStack(stack []uintptr) (uint32, bool) {
 	offset := o.Len()
 	byteLen := uint32(len(stack)) * uint32(unsafe.Sizeof(uintptr(0)))
-	newLen := len(o.out) + int(byteLen)
-	if newLen > cap(o.out) {
-		o.isFull = true
+	newLen := offset + byteLen
+	if !o.EnsureLen(newLen) {
 		return 0, false
 	}
-	o.out = o.out[:newLen]
 	copy(o.out[offset:], unsafe.Slice((*byte)(unsafe.Pointer(&stack[0])), byteLen))
 	return byteLen, true
 }
