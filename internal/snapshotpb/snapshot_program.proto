@@ -101,6 +101,8 @@ message TypeInfo {
   uint32 enqueue_pc = 1;
   uint32 byte_len = 2;
 
+  bool serialize_before_enqueue = 7;
+
   GoContextImpl go_context_impl = 3;
   // Go context value spec identified by this type being the key.
   GoContextValueType go_context_key = 4;
