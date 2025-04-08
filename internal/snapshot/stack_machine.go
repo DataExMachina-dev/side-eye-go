@@ -9,6 +9,13 @@ import (
 	. "github.com/DataExMachina-dev/side-eye-go/internal/stackmachine"
 )
 
+type ExprType int
+
+const (
+	Frame ExprType = iota
+	Pointer
+)
+
 // TODO: Figure out if these generics buy literally anything compared to just
 // using a interfaces. Also worth comparing against the concrete types.
 type stackMachine struct {
@@ -19,9 +26,14 @@ type stackMachine struct {
 	cfa     uintptr
 	decoder OpDecoder
 
-	frameOffset       uint32
-	frameBufEndOffset uint32
-	frameHeader       *framing.FrameHeader
+	frameHeader *framing.FrameHeader
+
+	exprResultsOffset    uint32
+	exprResultsEndOffset uint32
+	exprType             ExprType
+	rootAddr             uint64
+
+	chasedEntry framing.QueueEntry
 
 	goContextOffset         uint32
 	goContextCaptureBitmask uint64
@@ -413,17 +425,21 @@ func (s *stackMachine) Run(
 			s.b.Zero(s.offset, uint32(copyFromRegister.ByteSize))
 
 		case OpCodePrepareExprEval:
-			s.frameBufEndOffset = s.b.Len()
+			s.exprResultsEndOffset = s.b.Len()
 			s.offset = s.b.Len()
+			if s.exprType == Pointer {
+				ptr := s.b.Ptr(s.offset)
+				*(*uint64)(ptr) = s.rootAddr
+			}
 
-		case OpCodeSaveFrameResult:
-			saveFrameResult := s.decoder.DecodeSaveFrameResult()
-			s.b.Copy(s.offset, s.frameOffset+saveFrameResult.FrameOffset, saveFrameResult.ByteLen)
-			s.offset = s.frameOffset + saveFrameResult.FrameOffset
+		case OpCodeSaveExprResult:
+			saveExprResult := s.decoder.DecodeSaveExprResult()
+			s.b.Copy(s.offset, s.exprResultsOffset+saveExprResult.ResultOffset, saveExprResult.ByteLen)
+			s.offset = s.exprResultsOffset + saveExprResult.ResultOffset
 			// Truncate scratch buffer, removing temporary processing data past the frame.
 			// We do it here, as result may be used for following enqueue function that
 			// may want to store data items that we need to preserve.
-			s.b.truncate(s.frameBufEndOffset)
+			s.b.truncate(s.exprResultsEndOffset)
 
 		case OpCodeDereferencePtr:
 			dereferencePtr := s.decoder.DecodeDereferencePtr()
@@ -437,7 +453,7 @@ func (s *stackMachine) Run(
 				})
 			}
 			if !ok {
-				s.b.truncate(s.frameBufEndOffset)
+				s.b.truncate(s.exprResultsEndOffset)
 				ok := s.ExecuteReturn()
 				if ok == nil {
 					break
@@ -452,8 +468,19 @@ func (s *stackMachine) Run(
 
 		case OpCodeSetPresenceBit:
 			setPresenceBit := s.decoder.DecodeSetPresenceBit()
-			ptr := s.b.Ptr(s.frameOffset + setPresenceBit.BitOffset/8)
+			ptr := s.b.Ptr(s.exprResultsOffset + setPresenceBit.BitOffset/8)
 			*(*uint8)(ptr) |= (1 << (setPresenceBit.BitOffset % 8))
+
+		case OpCodePreparePointeeData:
+			offset, ok := s.b.reserveQueueEntry(s.chasedEntry)
+			if !ok {
+				return false
+			}
+			s.exprType = Pointer
+			s.exprResultsOffset = offset
+			s.rootAddr = s.chasedEntry.Addr
+			s.offset = offset
+			s.b.Zero(s.offset, s.chasedEntry.Len)
 
 		case OpCodePrepareFrameData:
 			prepareFrameData := s.decoder.DecodePrepareFrameData()
@@ -468,7 +495,8 @@ func (s *stackMachine) Run(
 				return false
 			}
 			s.frameHeader = frameHeader
-			s.frameOffset = offset
+			s.exprType = Frame
+			s.exprResultsOffset = offset
 			s.offset = offset
 
 		case OpCodeConcludeFrameData:

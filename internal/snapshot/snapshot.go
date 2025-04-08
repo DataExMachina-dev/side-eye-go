@@ -267,13 +267,17 @@ func (s *snapshotter) processQueue() {
 		if entry.Len == 0 {
 			continue
 		}
-		offset, ok := s.out.writeQueueEntry(entry)
-		if !ok {
-			continue
+		offset := uint32(0)
+		if ti.SerializeBeforeEnqueue {
+			offset, ok = s.out.writeQueueEntry(entry)
+			if !ok {
+				continue
+			}
 		}
 		if ti.EnqueuePc == 0 {
 			continue
 		}
+		s.sm.chasedEntry = entry
 		s.sm.Run(ti.EnqueuePc, 0, 0, offset)
 	}
 }

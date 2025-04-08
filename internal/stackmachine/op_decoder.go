@@ -62,10 +62,11 @@ const (
 	OpCodeDereferenceCFAOffset  OpCode = 19
 	OpCodeCopyFromRegister      OpCode = 20
 	OpCodePrepareExprEval       OpCode = 36
-	OpCodeSaveFrameResult       OpCode = 34
+	OpCodeSaveExprResult        OpCode = 34
 	OpCodeDereferencePtr        OpCode = 35
 	OpCodeZeroFill              OpCode = 21
 	OpCodeSetPresenceBit        OpCode = 30
+	OpCodePreparePointeeData    OpCode = 37
 	OpCodePrepareFrameData      OpCode = 22
 	OpCodeConcludeFrameData     OpCode = 25
 	PrepareEventData            OpCode = 24
@@ -141,9 +142,9 @@ type (
 		Register uint16
 		ByteSize uint8
 	}
-	OpSaveFrameResult struct {
-		FrameOffset uint32
-		ByteLen     uint32
+	OpSaveExprResult struct {
+		ResultOffset uint32
+		ByteLen      uint32
 	}
 	OpDereferencePtr struct {
 		Bias    uint32
@@ -318,13 +319,13 @@ func (d *OpDecoder) DecodeCopyFromRegister() OpCopyFromRegister {
 		ByteSize: byteSize,
 	}
 }
-func (d *OpDecoder) DecodeSaveFrameResult() OpSaveFrameResult {
-	frameOffset := binary.LittleEndian.Uint32(d.opBuf[d.pc:])
+func (d *OpDecoder) DecodeSaveExprResult() OpSaveExprResult {
+	resultOffset := binary.LittleEndian.Uint32(d.opBuf[d.pc:])
 	byteLen := binary.LittleEndian.Uint32(d.opBuf[d.pc+4:])
 	d.pc += 8
-	return OpSaveFrameResult{
-		FrameOffset: frameOffset,
-		ByteLen:     byteLen,
+	return OpSaveExprResult{
+		ResultOffset: resultOffset,
+		ByteLen:      byteLen,
 	}
 }
 func (d *OpDecoder) DecodeDereferencePtr() OpDereferencePtr {

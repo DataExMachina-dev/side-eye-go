@@ -33,10 +33,11 @@ func _() {
 	_ = x[OpCodeDereferenceCFAOffset-19]
 	_ = x[OpCodeCopyFromRegister-20]
 	_ = x[OpCodePrepareExprEval-36]
-	_ = x[OpCodeSaveFrameResult-34]
+	_ = x[OpCodeSaveExprResult-34]
 	_ = x[OpCodeDereferencePtr-35]
 	_ = x[OpCodeZeroFill-21]
 	_ = x[OpCodeSetPresenceBit-30]
+	_ = x[OpCodePreparePointeeData-37]
 	_ = x[OpCodePrepareFrameData-22]
 	_ = x[OpCodeConcludeFrameData-25]
 	_ = x[PrepareEventData-24]
@@ -48,19 +49,19 @@ func _() {
 
 const (
 	_OpCode_name_0 = "OpCodeInvalidOpCodeCallOpCodeCondJumpOpCodeDecrementOpCodeEnqueueEmptyInterfaceOpCodeEnqueueInterfaceOpCodeEnqueuePointerOpCodeEnqueueSliceHeaderOpCodeEnqueueStringHeaderOpCodeEnqueueHMapHeaderOpCodeJumpOpCodePopOpCodePushImmOpCodePushOffsetOpCodePushSliceLenOpCodeReturnOpCodeSetOffsetOpCodeAdvanceOffset"
-	_OpCode_name_1 = "OpCodeDereferenceCFAOffsetOpCodeCopyFromRegisterOpCodeZeroFillOpCodePrepareFrameDataOpCodeIllegalPrepareEventDataOpCodeConcludeFrameDataOpCodeChasePointersOpCodePrepareGoContextOpCodeTraverseGoContextOpCodeConcludeGoContextOpCodeSetPresenceBitOpCodeEnqueueSwissMapOpCodeEnqueueSwissMapGroupsOpCodeEnqueueSubroutineOpCodeSaveFrameResultOpCodeDereferencePtrOpCodePrepareExprEval"
+	_OpCode_name_1 = "OpCodeDereferenceCFAOffsetOpCodeCopyFromRegisterOpCodeZeroFillOpCodePrepareFrameDataOpCodeIllegalPrepareEventDataOpCodeConcludeFrameDataOpCodeChasePointersOpCodePrepareGoContextOpCodeTraverseGoContextOpCodeConcludeGoContextOpCodeSetPresenceBitOpCodeEnqueueSwissMapOpCodeEnqueueSwissMapGroupsOpCodeEnqueueSubroutineOpCodeSaveExprResultOpCodeDereferencePtrOpCodePrepareExprEvalOpCodePreparePointeeData"
 )
 
 var (
 	_OpCode_index_0 = [...]uint16{0, 13, 23, 37, 52, 79, 101, 121, 145, 170, 193, 203, 212, 225, 241, 259, 271, 286, 305}
-	_OpCode_index_1 = [...]uint16{0, 26, 48, 62, 84, 97, 113, 136, 155, 177, 200, 223, 243, 264, 291, 314, 335, 355, 376}
+	_OpCode_index_1 = [...]uint16{0, 26, 48, 62, 84, 97, 113, 136, 155, 177, 200, 223, 243, 264, 291, 314, 334, 354, 375, 399}
 )
 
 func (i OpCode) String() string {
 	switch {
 	case i <= 17:
 		return _OpCode_name_0[_OpCode_index_0[i]:_OpCode_index_0[i+1]]
-	case 19 <= i && i <= 36:
+	case 19 <= i && i <= 37:
 		i -= 19
 		return _OpCode_name_1[_OpCode_index_1[i]:_OpCode_index_1[i+1]]
 	default:

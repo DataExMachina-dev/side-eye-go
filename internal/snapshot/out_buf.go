@@ -176,10 +176,7 @@ func (o *outBuf) truncate(offset uint32) {
 	o.out = o.out[:offset]
 }
 
-// writeQueueEntry extends the outBuf to include a new queue entry header, and
-// dereferences its data. If either the outBuf is full or the dereference fails,
-// the buffer is unmodified.
-func (o *outBuf) writeQueueEntry(entry framing.QueueEntry) (dataOffset uint32, ok bool) {
+func (o *outBuf) reserveQueueEntry(entry framing.QueueEntry) (dataOffset uint32, ok bool) {
 	origLen := o.Len()
 	headerOffset := origLen
 	paddedLen := entry.Len
@@ -193,7 +190,16 @@ func (o *outBuf) writeQueueEntry(entry framing.QueueEntry) (dataOffset uint32, o
 	}
 	*(*framing.QueueEntry)(o.Ptr(headerOffset)) = entry
 	dataOffset = headerOffset + uint32(unsafe.Sizeof(framing.QueueEntry{}))
+	return dataOffset, true
+}
+
+// writeQueueEntry extends the outBuf to include a new queue entry header, and
+// dereferences its data. If either the outBuf is full or the dereference fails,
+// the buffer is unmodified.
+func (o *outBuf) writeQueueEntry(entry framing.QueueEntry) (dataOffset uint32, ok bool) {
+	dataOffset, ok = o.reserveQueueEntry(entry)
 	if !o.Dereference(dataOffset, uintptr(entry.Addr), entry.Len) {
+		headerOffset := dataOffset - uint32(unsafe.Sizeof(framing.QueueEntry{}))
 		(*framing.QueueEntry)(o.Ptr(headerOffset)).Type |= (1 << 31)
 		return 0, false
 	}
